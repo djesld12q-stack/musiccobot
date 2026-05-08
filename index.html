@@ -123,7 +123,6 @@
         #now-playing-title { margin-top: 20px; font-size: 1.5em; font-weight: 900; color: var(--gold); text-align: center; text-shadow: 0 0 10px rgba(255, 204, 0, 0.3); padding: 0 20px;}
         #now-playing-meta { font-size: 1em; color: #aaa; margin-top: 5px; }
 
-        /* MODALE */
         .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; }
         .modal-content { background:var(--panel); width:90%; max-width:600px; max-height:80vh; border: 1px solid #444; border-radius:10px; display:flex; flex-direction:column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
         .modal-header { padding:15px; background:#222; border-bottom:1px solid #444; display:flex; justify-content:space-between; align-items:center; border-radius: 10px 10px 0 0; }
@@ -143,7 +142,6 @@
         .btn-clear-bans { background: var(--red); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s;}
         .btn-clear-bans:hover { background: #ff7777; transform: scale(1.05); }
 
-        /* TUTORIAL MODAL */
         #tutorial-modal .modal-content { max-width: 800px; }
         .tut-section { background: #25252b; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--accent); }
         .tut-section h4 { margin-top: 0; color: var(--gold); margin-bottom: 10px; }
@@ -207,7 +205,6 @@
             .bottom-zone { position: fixed; bottom: 0; left: 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); }
         }
         
-        /* CHANGELOG LIST */
         .changelog-entry { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #333; }
         .changelog-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
         .cl-version { color: var(--gold); font-size: 1.2em; margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between;}
@@ -221,7 +218,6 @@
         .lang-select { background: #222; color: #fff; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; cursor: pointer; outline: none; font-weight: bold; }
         .lang-select:hover { border-color: var(--accent); }
 
-        /* FILTER STYLES */
         .filter-add-box { display: flex; gap: 8px; padding: 10px 15px 0 15px; flex-wrap: wrap; }
         .filter-add-box input { flex-grow: 1; background: #0b0b0d; border: 1px solid #555; color: #fff; padding: 8px 12px; border-radius: 6px; outline: none; min-width: 150px; }
         .filter-add-box input:focus { border-color: #ff8800; }
@@ -230,6 +226,9 @@
         .filter-add-box button:hover { background: #ffaa33; }
         .filter-badge { background: rgba(255, 136, 0, 0.2); color: #ff8800; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
         #filter-count-badge { background: rgba(255,136,0,0.2); color: #ff8800; padding: 4px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 900; }
+
+        .btn-reset-filters { background: #333; color: #ff8800; border: 1px solid #ff8800; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s; margin-left: 10px;}
+        .btn-reset-filters:hover { background: #ff8800; color: #000; }
     </style>
 </head>
 <body>
@@ -382,7 +381,7 @@
                     <h4 class="cl-version">v1.0.1 <span class="cl-date">2026</span></h4>
                     <ul class="cl-list">
                         <li><span class="cl-tag new">NEW</span> <strong>OBS Overlay</strong> — <code>obs-overlay.html</code> for Browser Source. Shows now-playing info with animated EQ bars and marquee for long titles.</li>
-                        <li><span class="cl-tag new">NEW</span> <strong>Song Filter</strong> — Auto-skip songs matching keywords in title or artist. Manage via the 🚫 FILTER button in the queue header.</li>
+                        <li><span class="cl-tag new">NEW</span> <strong>Song Filter</strong> — Auto-skip songs matching keywords in title or artist. Manage via the 🚫 FILTER button. Default filter list pre-loaded on first launch.</li>
                         <li><span class="cl-tag new">NEW</span> <strong>Clear Queue</strong> — Button to instantly clear all queued tracks (keeps auto-base running).</li>
                         <li><span class="cl-tag fix">FIX</span> Category error message no longer shows HTML entities like <code>&amp;amp;</code> — now correctly displays e.g. "Film &amp; Animation".</li>
                     </ul>
@@ -436,7 +435,10 @@
         <div class="modal-content" style="max-width: 650px;">
             <div class="modal-header">
                 <h3 style="margin:0; color:#ff8800;">🚫 Song Filters (Auto-Skip)</h3>
-                <button onclick="closeFilterManager()" style="background:none; border:none; color:#aaa; font-size:1.5em; cursor:pointer;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#aaa'">&times;</button>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button class="btn-reset-filters" onclick="resetDefaultFilters()" title="Reset to default filter list">🔄 Reset Defaults</button>
+                    <button onclick="closeFilterManager()" style="background:none; border:none; color:#aaa; font-size:1.5em; cursor:pointer;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#aaa'">&times;</button>
+                </div>
             </div>
             <div style="padding: 10px 15px; background: rgba(255,136,0,0.08); border-bottom: 1px solid #333; font-size: 0.8em; color: #ccc; line-height: 1.5;">
                 ⚠️ Songs matching these keywords (in title or artist) will be <strong style="color:#ff8800">automatically skipped</strong> when added to queue or when played. Case-insensitive.
@@ -664,7 +666,6 @@
                 ui_tut_btn_understand: "I UNDERSTAND, CONTINUE!",
                 ui_tut_btn_api: "I UNDERSTAND, SETUP API",
                 ui_tut_btn_close: "I UNDERSTAND, CLOSE",
-
                 msg_sr_on: "Song Request is now active! You can add a track: !sr YouTube link",
                 msg_sr_off: "Song Request has been stopped!",
                 msg_base_play: "▶️ @{user} started base playback!",
@@ -838,26 +839,21 @@
         function t(key, vars = {}) {
             let dict = i18n[currentLang] || i18n['en'];
             let text = dict[key] || i18n['en'][key] || key;
-            for (let k in vars) {
-                text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), vars[k]);
-            }
+            for (let k in vars) { text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), vars[k]); }
             return text;
         }
 
-        // =========================================================================
-        // FIX: decode HTML entities from YouTube API responses
-        // =========================================================================
         function decodeHtmlEntities(str) {
-    if (!str) return str;
-    let prev = null;
-    while (prev !== str) {
-        prev = str;
-        const txt = document.createElement('textarea');
-        txt.innerHTML = str;
-        str = txt.value;
-    }
-    return str;
-}
+            if (!str) return str;
+            let prev = null;
+            while (prev !== str) {
+                prev = str;
+                const txt = document.createElement('textarea');
+                txt.innerHTML = str;
+                str = txt.value;
+            }
+            return str;
+        }
 
         function changeLanguage(langCode) {
             currentLang = langCode;
@@ -903,9 +899,97 @@
         let isSrEnabled = false; 
 
         // =========================================================================
-        // SONG FILTERS
+        // DEFAULT SONG FILTERS — loaded on first launch if no filters saved yet
         // =========================================================================
-        let songFilters = JSON.parse(localStorage.getItem('ytm_song_filters')) || [];
+        const DEFAULT_SONG_FILTERS = [
+            // Поп-виконавці (RU)
+            {keyword:"Алла Пугачова",type:"artist"},{keyword:"Alla Pugacheva",type:"artist"},
+            {keyword:"Філіп Кіркоров",type:"artist"},{keyword:"Filipp Kirkorov",type:"artist"},{keyword:"Philip Kirkorov",type:"artist"},
+            {keyword:"Валерія",type:"artist"},{keyword:"Valeriya",type:"artist"},
+            {keyword:"Діма Білан",type:"artist"},{keyword:"Dima Bilan",type:"artist"},
+            {keyword:"Сергій Лазарєв",type:"artist"},{keyword:"Sergey Lazarev",type:"artist"},
+            {keyword:"Ірина Аллегрова",type:"artist"},{keyword:"Irina Allegrova",type:"artist"},
+            {keyword:"Полина Гагарина",type:"artist"},{keyword:"Polina Gagarina",type:"artist"},
+            {keyword:"Нюша",type:"artist"},{keyword:"NYUSHA",type:"artist"},
+            {keyword:"МакSим",type:"artist"},{keyword:"МакSiм",type:"artist"},
+            {keyword:"SEREBRO",type:"artist"},
+            {keyword:"Тату",type:"artist"},{keyword:"tatu",type:"artist"},{keyword:"t.A.T.u.",type:"artist"},
+            {keyword:"DJ Smash",type:"artist"},{keyword:"Дискотека Авария",type:"artist"},{keyword:"Diskoteka Avariya",type:"artist"},
+            // Рок / альтернатива (RU)
+            {keyword:"Земфіра",type:"artist"},{keyword:"Zemfira",type:"artist"},
+            {keyword:"Юрій Шевчук",type:"artist"},{keyword:"ДДТ",type:"artist"},{keyword:"DDT",type:"artist"},
+            {keyword:"Борис Гребенщиков",type:"artist"},{keyword:"Акваріум",type:"artist"},{keyword:"Aquarium",type:"artist"},
+            {keyword:"Віктор Цой",type:"artist"},{keyword:"В.Цой",type:"artist"},{keyword:"Viktor Tsoy",type:"artist"},
+            {keyword:"Кіно",type:"artist"},{keyword:"Kino",type:"artist"},
+            {keyword:"Арія",type:"artist"},{keyword:"Aria",type:"artist"},
+            {keyword:"Кіпелов",type:"artist"},{keyword:"Kipelov",type:"artist"},
+            {keyword:"Аліса",type:"artist"},{keyword:"Alisa",type:"artist"},
+            {keyword:"Бі-2",type:"artist"},{keyword:"B-2",type:"artist"},{keyword:"Bi-2",type:"artist"},
+            {keyword:"Сплін",type:"artist"},{keyword:"Splean",type:"artist"},
+            {keyword:"Чайф",type:"artist"},{keyword:"Chaif",type:"artist"},
+            {keyword:"Мумій Тролль",type:"artist"},{keyword:"Mumiy Troll",type:"artist"},
+            {keyword:"Наутилус Помпілус",type:"artist"},{keyword:"Nautilus Pompilius",type:"artist"},
+            {keyword:"Ленінград",type:"artist"},{keyword:"Leningrad",type:"artist"},
+            {keyword:"Король і шут",type:"artist"},{keyword:"Korol i shut",type:"artist"},
+            {keyword:"Агата Крісті",type:"artist"},{keyword:"Agatha Christie",type:"artist"},
+            {keyword:"Molchat Doma",type:"artist"},{keyword:"Молчат дома",type:"artist"},
+            // Реп / хіп-хоп (RU)
+            {keyword:"Баста",type:"artist"},{keyword:"Basta",type:"artist"},
+            {keyword:"Тиматі",type:"artist"},{keyword:"Timati",type:"artist"},
+            {keyword:"Oxxxymiron",type:"artist"},
+            {keyword:"Каста",type:"artist"},{keyword:"Kasta",type:"artist"},
+            {keyword:"Miyagi",type:"artist"},{keyword:"Andy Panda",type:"artist"},
+            {keyword:"Моргенштерн",type:"artist"},{keyword:"MORGENSHTERN",type:"artist"},
+            {keyword:"FACE",type:"artist"},{keyword:"Слава КПСС",type:"artist"},{keyword:"Slava KPSS",type:"artist"},
+            {keyword:"Скриптоніт",type:"artist"},{keyword:"Skryptonite",type:"artist"},
+            {keyword:"ЛСП",type:"artist"},{keyword:"LSP",type:"artist"},
+            {keyword:"Макс Корж",type:"artist"},{keyword:"Max Korzh",type:"artist"},
+            {keyword:"IC3PEAK",type:"artist"},
+            // Барди / авторська пісня
+            {keyword:"Висоцький",type:"artist"},{keyword:"Vladimir Vysotsky",type:"artist"},{keyword:"Владимир Высоцкий",type:"artist"},
+            {keyword:"Окуджава",type:"artist"},{keyword:"Bulat Okudzhava",type:"artist"},{keyword:"Булат Окуджава",type:"artist"},
+            {keyword:"Розенбаум",type:"artist"},{keyword:"Alexander Rosenbaum",type:"artist"},{keyword:"Александр Розенбаум",type:"artist"},
+            // Шансон (RU)
+            {keyword:"Михайло Круг",type:"artist"},{keyword:"Mikhail Krug",type:"artist"},{keyword:"Михаил Круг",type:"artist"},
+            {keyword:"Григорій Лепс",type:"artist"},{keyword:"Grigory Leps",type:"artist"},{keyword:"Григорий Лепс",type:"artist"},
+            {keyword:"Бутирка",type:"artist"},{keyword:"Butyrka",type:"artist"},{keyword:"БУТЫРКА",type:"artist"},
+            {keyword:"Трофим",type:"artist"},{keyword:"Trofim",type:"artist"},
+            {keyword:"Михаил Шуфутинский",type:"artist"},{keyword:"Mikhail Shufutinsky",type:"artist"},
+            {keyword:"Вилли Токарев",type:"artist"},{keyword:"Willi Tokarev",type:"artist"},
+            // Радянська естрада
+            {keyword:"Людмила Зикіна",type:"artist"},{keyword:"Lyudmila Zykina",type:"artist"},
+            {keyword:"Муслим Магомаев",type:"artist"},{keyword:"Muslim Magomaev",type:"artist"},
+            {keyword:"Іосиф Кобзон",type:"artist"},{keyword:"Iosif Kobzon",type:"artist"},
+            {keyword:"Лев Лещенко",type:"artist"},{keyword:"Lev Leshchenko",type:"artist"},
+            {keyword:"Юрій Антонов",type:"artist"},{keyword:"Yuri Antonov",type:"artist"},
+            {keyword:"Олег Газманов",type:"artist"},{keyword:"Oleg Gazmanov",type:"artist"},
+            {keyword:"SHAMAN",type:"artist"},
+            // Пропаганда / проросійський контент
+            {keyword:"russian",type:"both"},{keyword:"soviet",type:"both"},{keyword:"red army",type:"both"},
+            {keyword:"русский",type:"both"},{keyword:"русская",type:"both"},
+            // Загальні фільтри якості
+            {keyword:"karaoke",type:"title"},{keyword:"nightcore",type:"title"},
+            {keyword:"8d audio",type:"title"},{keyword:"slowed reverb",type:"title"},
+        ];
+
+        // =========================================================================
+        // SONG FILTERS — init with defaults on first run
+        // =========================================================================
+        let songFilters = JSON.parse(localStorage.getItem('ytm_song_filters'));
+        if (!songFilters) {
+            songFilters = DEFAULT_SONG_FILTERS;
+            localStorage.setItem('ytm_song_filters', JSON.stringify(songFilters));
+            console.log(`[YTM] Default filters loaded: ${songFilters.length} entries`);
+        }
+
+        function resetDefaultFilters() {
+            if (!confirm(`Reset to default filter list? (${DEFAULT_SONG_FILTERS.length} entries)\nThis will REPLACE your current filters.`)) return;
+            songFilters = [...DEFAULT_SONG_FILTERS];
+            localStorage.setItem('ytm_song_filters', JSON.stringify(songFilters));
+            log(`🔄 Filters reset to defaults (${songFilters.length} entries)`, 'warn');
+            renderFilterList();
+            updateFilterBadge();
+        }
 
         function matchesFilter(songObj) {
             if (songFilters.length === 0) return false;
@@ -925,8 +1009,7 @@
             const type = document.getElementById('filter-type-select').value;
             if (!kw) return;
             if (songFilters.some(f => f.keyword.toLowerCase() === kw.toLowerCase() && f.type === type)) {
-                alert('Filter already exists!');
-                return;
+                alert('Filter already exists!'); return;
             }
             songFilters.push({ keyword: kw, type: type });
             localStorage.setItem('ytm_song_filters', JSON.stringify(songFilters));
@@ -947,11 +1030,7 @@
         function updateFilterBadge() {
             const badge = document.getElementById('filter-count-badge');
             if (!badge) return;
-            if (songFilters.length > 0) {
-                badge.textContent = `🚫 ${songFilters.length}`;
-            } else {
-                badge.textContent = 'FILTER';
-            }
+            badge.textContent = songFilters.length > 0 ? `🚫 ${songFilters.length}` : 'FILTER';
         }
 
         function renderFilterList() {
@@ -1404,18 +1483,11 @@
             renderQueue(); playNext();
         }
 
-        // =========================================================================
-        // OBS: Write now-playing to localStorage for overlay
-        // =========================================================================
         function updateNowPlayingOverlay(songInfo) {
             if (songInfo) {
                 localStorage.setItem('ytm_now_playing', JSON.stringify({
-                    id: songInfo.id,
-                    title: songInfo.title,
-                    author: songInfo.author,
-                    user: songInfo.user,
-                    stopped: false,
-                    ts: Date.now()
+                    id: songInfo.id, title: songInfo.title, author: songInfo.author,
+                    user: songInfo.user, stopped: false, ts: Date.now()
                 }));
             } else {
                 localStorage.setItem('ytm_now_playing', JSON.stringify({ id: null, stopped: true, ts: Date.now() }));
@@ -1426,7 +1498,6 @@
             if(currentSongInfo) playHistory.push(currentSongInfo);
             
             if (playQueue.length > 0) {
-                // Auto-skip filtered songs
                 let attempts = 0;
                 while (playQueue.length > 0 && attempts < playQueue.length) {
                     let candidate = playQueue[0];
@@ -1547,7 +1618,6 @@
         function addSongFromChat(songObj, force = false) {
             if(songObj.author) songObj.author = cleanAuthorName(songObj.author);
 
-            // CHECK FILTER before adding
             if (matchesFilter(songObj)) {
                 log(`🚫 Filtered (add blocked): "${songObj.title}"`, 'warn');
                 if (songObj.user !== "Streamer" && songObj.user !== "Auto") {
@@ -1774,7 +1844,6 @@
                                 case "EMPTY_INPUT": msg += t('msg_err_empty'); break;
                                 case "NOT_FOUND": msg += t('msg_err_not_found', {info: inner.extraInfo}); break;
                                 case "TOO_LONG": msg += t('msg_err_long', {info: Math.floor(parseInt(inner.extraInfo)/60)}); break;
-                                // FIX: decode HTML entities from YouTube API category names
                                 case "NOT_MUSIC": msg += t('msg_err_cat', {info: decodeHtmlEntities(inner.extraInfo)}); break;
                                 case "API_ERROR": msg += t('msg_err_api'); break;
                             }
