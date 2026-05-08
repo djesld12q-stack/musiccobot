@@ -848,11 +848,16 @@
         // FIX: decode HTML entities from YouTube API responses
         // =========================================================================
         function decodeHtmlEntities(str) {
-            if (!str) return str;
-            const txt = document.createElement('textarea');
-            txt.innerHTML = str;
-            return txt.value;
-        }
+    if (!str) return str;
+    let prev = null;
+    while (prev !== str) {
+        prev = str;
+        const txt = document.createElement('textarea');
+        txt.innerHTML = str;
+        str = txt.value;
+    }
+    return str;
+}
 
         function changeLanguage(langCode) {
             currentLang = langCode;
