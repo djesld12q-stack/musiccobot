@@ -46,6 +46,23 @@
     border-radius: 14px; pointer-events: none; z-index: 0;
   }
 
+  /* PAUSE overlay */
+  #pause-overlay {
+    position: absolute; inset: 0; z-index: 5;
+    background: rgba(0,0,0,0.45);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  #pause-overlay.visible { opacity: 1; }
+  #pause-icon {
+    font-size: 36px; color: rgba(255,255,255,0.7);
+    filter: drop-shadow(0 0 12px rgba(0,0,0,0.8));
+    animation: pausePulse 2s ease-in-out infinite;
+  }
+  @keyframes pausePulse { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
+
   .inner { position: relative; z-index: 1; }
   .top-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
   .thumb-wrap {
@@ -55,7 +72,24 @@
     box-shadow: 0 4px 14px rgba(0,0,0,0.5); background: #111;
   }
   .thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 0.4s; }
-  .eq-overlay { position: absolute; bottom: 4px; right: 4px; display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+
+  /* Pause effect on thumbnail */
+  .thumb-wrap::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(0,0,0,0);
+    transition: background 0.3s;
+  }
+  #player-card.paused .thumb-wrap::after { background: rgba(0,0,0,0.4); }
+
+  .eq-overlay {
+    position: absolute; bottom: 4px; right: 4px;
+    display: flex; align-items: flex-end; gap: 2px; height: 14px;
+    transition: opacity 0.3s;
+  }
+  /* Freeze EQ bars when paused */
+  #player-card.paused .eq-overlay { opacity: 0.2; }
+  #player-card.paused .eq-bar { animation-play-state: paused !important; }
+
   .eq-bar { width: 3px; border-radius: 2px; background: #fff; animation: eq 0.6s ease-in-out infinite alternate; }
   .eq-bar:nth-child(1){animation-duration:0.45s;animation-delay:0.00s}
   .eq-bar:nth-child(2){animation-duration:0.60s;animation-delay:0.10s}
@@ -63,6 +97,7 @@
   .eq-bar:nth-child(4){animation-duration:0.70s;animation-delay:0.15s}
   .eq-bar:nth-child(5){animation-duration:0.40s;animation-delay:0.08s}
   @keyframes eq{0%{height:2px;opacity:0.5}100%{height:14px;opacity:1}}
+
   .source-badge {
     position: absolute; top: 4px; left: 4px;
     font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
@@ -74,9 +109,20 @@
     width: 6px; height: 6px; border-radius: 50%;
     background: #00ff88; box-shadow: 0 0 6px #00ff88;
     animation: pulse 1.5s ease-in-out infinite; flex-shrink: 0;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  /* Paused state dot becomes yellow */
+  #player-card.paused .label-dot {
+    background: #ffcc00; box-shadow: 0 0 6px #ffcc00;
+    animation: none;
   }
   @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
-  .label-text { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #00ff88; }
+  .label-text {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+    color: #00ff88; transition: color 0.3s;
+  }
+  #player-card.paused .label-text { color: #ffcc00; }
+
   .mode-badge {
     margin-left: auto; font-size: 9px; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.5px;
@@ -90,6 +136,9 @@
   }
   .song-title { display: inline-block; font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; }
   .song-title.scrolling { animation: marquee 14s linear infinite; }
+  /* Pause marquee */
+  #player-card.paused .song-title.scrolling { animation-play-state: paused; }
+
   @keyframes marquee{
     0%{transform:translateX(0)}15%{transform:translateX(0)}
     85%{transform:translateX(var(--sd,-80px))}100%{transform:translateX(var(--sd,-80px))}
@@ -107,8 +156,24 @@
     border-radius: 2px; background: var(--accent-bar, #9146ff); opacity: 0.35;
     pointer-events: none; transition: width 1s linear, background 1s ease;
   }
+  /* Stop smooth transition when paused */
+  #player-card.paused .bar-fill-overlay { transition: width 0s, background 1s ease; }
+
   .req-row { margin-top: 7px; display: flex; align-items: center; gap: 5px; font-size: 10px; color: rgba(255,255,255,0.35); }
   .req-user { color: #bf94ff; font-weight: 600; }
+
+  /* PAUSED label badge */
+  #paused-badge {
+    display: none;
+    position: absolute; top: 10px; right: 14px; z-index: 6;
+    background: rgba(255,204,0,0.15); border: 1px solid rgba(255,204,0,0.4);
+    color: #ffcc00; font-size: 9px; font-weight: 800;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 10px;
+    animation: fadeFlash 2s ease-in-out infinite;
+  }
+  #player-card.paused #paused-badge { display: block; }
+  @keyframes fadeFlash { 0%,100%{opacity:1} 50%{opacity:0.4} }
 </style>
 </head>
 <body>
@@ -119,6 +184,13 @@
 </div>
 
 <div id="player-card">
+  <!-- Pause overlay -->
+  <div id="pause-overlay">
+    <span id="pause-icon">⏸</span>
+  </div>
+  <!-- Paused badge -->
+  <div id="paused-badge">⏸ PAUSED</div>
+
   <div class="inner">
     <div class="top-row">
       <div class="thumb-wrap">
@@ -132,7 +204,7 @@
       <div class="track-info">
         <div class="label-row">
           <div class="label-dot"></div>
-          <span class="label-text">Now Playing</span>
+          <span class="label-text" id="label-text">Now Playing</span>
           <span class="mode-badge" id="mode-badge"></span>
         </div>
         <div class="title-wrap"><span class="song-title" id="song-title"></span></div>
@@ -154,7 +226,6 @@
 </div>
 
 <script>
-  // ── Той самий ключ localStorage що і в index.html ──────────────────────
   let WS_PORT = localStorage.getItem('ytm_ws_port') || '8080';
 
   const COLORS = {
@@ -167,6 +238,8 @@
   const statusDot   = document.getElementById('status-dot');
   const statusText  = document.getElementById('status-text');
   const card        = document.getElementById('player-card');
+  const pauseOverlay = document.getElementById('pause-overlay');
+  const labelTextEl = document.getElementById('label-text');
   const thumb       = document.getElementById('thumb');
   const srcBadge    = document.getElementById('src-badge');
   const modeBadge   = document.getElementById('mode-badge');
@@ -179,6 +252,7 @@
   const reqUser     = document.getElementById('req-user');
   const waveBarsEl  = document.getElementById('wave-bars');
 
+  // Build wave bars
   for (let i = 0; i < 52; i++) {
     const b = document.createElement('div');
     b.className = 'w-bar';
@@ -200,19 +274,52 @@
     statusText.textContent = text;
   }
 
-  let startTs = null, duration = 0, ticker = null;
+  // ── State ──────────────────────────────────────────────────────────────────
+  let startTs   = null;   // timestamp when song started (or resumed)
+  let elapsed   = 0;      // seconds elapsed up to last pause/sync
+  let duration  = 0;
+  let isPaused  = false;
+  let ticker    = null;
+
   function tick() {
-    if (!startTs) return;
-    const elapsed = (Date.now() - startTs) / 1000;
-    const pct = duration > 0 ? Math.min(1, elapsed / duration) : 0;
-    timeCur.textContent = fmt(elapsed);
+    if (isPaused || !startTs) return;
+    const totalElapsed = elapsed + (Date.now() - startTs) / 1000;
+    const pct = duration > 0 ? Math.min(1, totalElapsed / duration) : 0;
+    timeCur.textContent = fmt(totalElapsed);
     barFill.style.width = (pct * 100).toFixed(1) + '%';
     updateWave(pct);
+    // Auto-hide when song finishes (safety net)
+    if (duration > 0 && totalElapsed >= duration + 2) hideSong();
   }
 
+  // ── Pause / Resume visual state ────────────────────────────────────────────
+  function setPausedState(paused) {
+    isPaused = paused;
+    if (paused) {
+      card.classList.add('paused');
+      pauseOverlay.classList.add('visible');
+      labelTextEl.textContent = 'Paused';
+      // Snapshot elapsed at pause moment
+      if (startTs) {
+        elapsed += (Date.now() - startTs) / 1000;
+        startTs = null;
+      }
+    } else {
+      card.classList.remove('paused');
+      pauseOverlay.classList.remove('visible');
+      labelTextEl.textContent = 'Now Playing';
+      // Resume timer
+      startTs = Date.now();
+    }
+  }
+
+  // ── Show song ──────────────────────────────────────────────────────────────
   function showSong(data) {
-    startTs  = data.ts || Date.now();
+    // data.elapsed — seconds already played (for sync on reconnect)
+    elapsed  = data.elapsed || 0;
     duration = data.duration || 0;
+    isPaused = !!data.paused;
+
     const type = data.user === 'Auto' ? 'auto' : (data.user === 'Streamer' ? 'manual' : 'request');
     const c = COLORS[type];
     card.style.setProperty('--accent-glow', c.glow);
@@ -220,9 +327,11 @@
     srcBadge.style.background = c.badge;
     srcBadge.textContent  = { auto:'Auto', manual:'Manual', request:'!SR' }[type];
     modeBadge.textContent = srcBadge.textContent;
+
     thumb.style.opacity = 0;
     thumb.src = 'https://i.ytimg.com/vi/' + data.id + '/mqdefault.jpg';
     thumb.onload = () => { thumb.style.opacity = 1; };
+
     titleEl.classList.remove('scrolling');
     titleEl.style.removeProperty('--sd');
     titleEl.textContent  = data.title  || 'Unknown';
@@ -234,67 +343,123 @@
         titleEl.classList.add('scrolling');
       }
     });
+
     timeTotal.textContent = duration > 0 ? fmt(duration) : '--:--';
+
     if (type === 'request' && data.user) {
       reqRow.style.display = 'flex';
       reqUser.textContent  = '@' + data.user;
     } else {
       reqRow.style.display = 'none';
     }
+
+    // Set paused/playing visual
+    if (isPaused) {
+      card.classList.add('paused');
+      pauseOverlay.classList.add('visible');
+      labelTextEl.textContent = 'Paused';
+      startTs = null;
+    } else {
+      card.classList.remove('paused');
+      pauseOverlay.classList.remove('visible');
+      labelTextEl.textContent = 'Now Playing';
+      startTs = Date.now();
+    }
+
+    // Draw initial progress
+    const pct = duration > 0 ? Math.min(1, elapsed / duration) : 0;
+    barFill.style.transition = 'none';
+    barFill.style.width = (pct * 100).toFixed(1) + '%';
+    updateWave(pct);
+    timeCur.textContent = fmt(elapsed);
+    setTimeout(() => { barFill.style.transition = ''; }, 50);
+
     statusBadge.classList.add('hidden');
     card.classList.add('visible');
+
     clearInterval(ticker);
-    ticker = setInterval(tick, 1000);
+    ticker = setInterval(tick, 500);
     tick();
   }
 
+  // ── Sync event (periodic update from index.html) ───────────────────────────
+  function syncSong(data) {
+    if (!card.classList.contains('visible')) return;
+    // Resync elapsed time
+    elapsed  = data.elapsed || 0;
+    duration = data.duration || duration;
+    if (!isPaused) startTs = Date.now();
+    tick();
+  }
+
+  // ── Hide song ──────────────────────────────────────────────────────────────
   function hideSong() {
-    startTs = null;
+    startTs  = null;
+    elapsed  = 0;
+    isPaused = false;
     clearInterval(ticker);
-    card.classList.remove('visible');
+    card.classList.remove('visible', 'paused');
+    pauseOverlay.classList.remove('visible');
+    labelTextEl.textContent = 'Now Playing';
     statusBadge.classList.remove('hidden');
     setStatus('connected', 'Підключено · очікування пісні...');
   }
 
-  // ── WebSocket — ідентичне підключення як в index.html ─────────────────────
+  // ── WebSocket ──────────────────────────────────────────────────────────────
   let ws = null;
   let wsReconnectTimeout = null;
 
   function connectWebsocket() {
     setStatus('connecting', 'Підключення до порту ' + WS_PORT + '...');
-
     ws = new WebSocket('ws://localhost:' + WS_PORT + '/');
 
     ws.onopen = () => {
       setStatus('connected', 'Підключено · очікування пісні...');
-      // ── той самий Subscribe що і в index.html ──
       ws.send(JSON.stringify({ request: 'Subscribe', events: { General: ['Custom'] }, id: 'Sub' }));
     };
 
     ws.onmessage = (e) => {
       const rawData = e.data.toString();
-
-      // ── той самий фільтр що і в index.html ──
       if (rawData.includes('"request":"Hello"') || rawData.includes('"id":"Sub"')) return;
 
       try {
         let inner = null;
         const raw = JSON.parse(rawData);
 
-        // ── той самий парсинг що і в index.html ──
         if (raw.data && typeof raw.data === 'object' && raw.data.data) {
           inner = JSON.parse(raw.data.data);
         } else if (raw.type) {
           inner = raw;
         }
-
         if (!inner) return;
 
-        // Обробляємо тільки NOW_PLAYING події
-        if (inner.stopped || !inner.id) {
+        // ── NOW_PLAYING: new song started ──
+        if (inner.type === 'NOW_PLAYING' || (!inner.type && inner.id)) {
+          if (inner.stopped || !inner.id) {
+            hideSong();
+          } else {
+            showSong(inner);
+          }
+        }
+        // ── NOW_PAUSED ──
+        else if (inner.type === 'NOW_PAUSED') {
+          if (card.classList.contains('visible')) setPausedState(true);
+        }
+        // ── NOW_RESUMED ──
+        else if (inner.type === 'NOW_RESUMED') {
+          if (card.classList.contains('visible')) {
+            // Resync elapsed if provided
+            if (inner.elapsed !== undefined) elapsed = inner.elapsed;
+            setPausedState(false);
+          }
+        }
+        // ── NOW_STOPPED ──
+        else if (inner.type === 'NOW_STOPPED') {
           hideSong();
-        } else if (inner.id) {
-          showSong(inner);
+        }
+        // ── NOW_SYNC (periodic time update) ──
+        else if (inner.type === 'NOW_SYNC') {
+          syncSong(inner);
         }
 
       } catch (err) {}
@@ -303,9 +468,7 @@
     ws.onclose = () => {
       setStatus('', 'Відключено. Повтор через 5с...');
       statusBadge.classList.remove('hidden');
-      card.classList.remove('visible');
       clearInterval(ticker);
-      // ── той самий таймаут 5000 що і в index.html ──
       wsReconnectTimeout = setTimeout(connectWebsocket, 5000);
     };
   }
