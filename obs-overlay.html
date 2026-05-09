@@ -229,13 +229,8 @@
   // Configuration for WebSocket connection
   // For OBS: Set these URL parameters: ?ws_host=YOUR_PC_IP&ws_port=8080
   const urlParams = new URLSearchParams(window.location.search);
-  let WS_HOST = urlParams.get('ws_host') || 'localhost';
+  let WS_HOST = urlParams.get('ws_host') || '127.0.0.1'; // Use 127.0.0.1 for localhost (more reliable in OBS)
   let WS_PORT = urlParams.get('ws_port') || localStorage.getItem('ytm_ws_port') || '8080';
-  
-  // Override with localStorage if on same machine
-  if (WS_HOST === 'localhost' && window.location.hostname !== 'localhost') {
-    WS_HOST = 'localhost'; // Still try localhost for OBS on same machine
-  }
 
   const COLORS = {
     request: { glow:'rgba(145,70,255,0.25)', bar:'#9146ff', badge:'rgba(145,70,255,0.85)' },
@@ -289,6 +284,7 @@
   let duration  = 0;
   let isPaused  = false;
   let ticker    = null;
+  let currentSongId = null;  // Track current song to detect changes
 
   function tick() {
     if (isPaused || !startTs) return;
@@ -328,6 +324,7 @@
     elapsed  = data.elapsed || 0;
     duration = data.duration || 0;
     isPaused = !!data.paused;
+    currentSongId = data.id;  // Update current song ID
 
     const type = data.user === 'Auto' ? 'auto' : (data.user === 'Streamer' ? 'manual' : 'request');
     const c = COLORS[type];
@@ -399,7 +396,15 @@
       showSong(data);
       return;
     }
-    // Resync elapsed time
+    
+    // If song ID changed, show new song completely
+    if (data.id && data.id !== currentSongId) {
+      log('🔄 Song changed from ' + currentSongId + ' to ' + data.id + ' - reloading');
+      showSong(data);
+      return;
+    }
+    
+    // Resync elapsed time (same song)
     elapsed  = data.elapsed || 0;
     duration = data.duration || duration;
     isPaused = !!data.paused;
@@ -416,6 +421,7 @@
     startTs  = null;
     elapsed  = 0;
     isPaused = false;
+    currentSongId = null;  // Clear song ID
     clearInterval(ticker);
     card.classList.remove('visible', 'paused');
     pauseOverlay.classList.remove('visible');
@@ -515,56 +521,83 @@
         const rawData = e.data.toString();
         if (rawData.includes('"request":"Hello"') || rawData.includes('"id":"Sub"')) return;
 
+        log('📨 Raw WebSocket message: ' + rawData.substring(0, 200));
+
         try {
           let inner = null;
           const raw = JSON.parse(rawData);
 
+          log('📦 Parsed JSON: ' + JSON.stringify(raw).substring(0, 200));
+
           if (raw.data && typeof raw.data === 'object' && raw.data.data) {
             inner = JSON.parse(raw.data.data);
+            log('📌 Extracted inner data from raw.data.data');
           } else if (raw.type) {
             inner = raw;
+            log('📌 Using raw as inner (has type property)');
+          } else if (raw.id) {
+            inner = raw;
+            log('📌 Using raw as inner (has id property)');
           }
-          if (!inner) return;
+          
+          if (!inner) {
+            log('⚠️ No inner data extracted. raw object keys: ' + Object.keys(raw).join(','));
+            return;
+          }
 
-          log('WebSocket event: ' + inner.type);
+          log('✅ Processing event type: ' + (inner.type || 'NO_TYPE'));
+          log('   Song ID: ' + (inner.id || 'NONE'));
+          log('   Title: ' + (inner.title || 'NONE'));
 
-          if (inner.type === 'NOW_PLAYING' || (!inner.type && inner.id)) {
+          if (inner.type === 'NOW_PLAYING' || (!inner.type && inner.id && inner.title)) {
             if (inner.stopped || !inner.id) {
+              log('🛑 Hiding song (stopped or no id)');
               hideSong();
             } else {
+              log('▶️ Showing song: ' + inner.title);
               showSong(inner);
             }
           }
           else if (inner.type === 'NOW_PAUSED') {
-            if (card.classList.contains('visible')) setPausedState(true);
+            if (card.classList.contains('visible')) {
+              log('⏸ Setting paused state');
+              setPausedState(true);
+            }
           }
           else if (inner.type === 'NOW_RESUMED') {
             if (card.classList.contains('visible')) {
               if (inner.elapsed !== undefined) elapsed = inner.elapsed;
+              log('▶️ Setting resumed state');
               setPausedState(false);
             }
           }
           else if (inner.type === 'NOW_STOPPED') {
+            log('🛑 Hiding song (NOW_STOPPED event)');
             hideSong();
           }
           else if (inner.type === 'NOW_SYNC') {
+            log('🔄 Syncing song');
             syncSong(inner);
           }
         } catch (err) {
-          log('Error parsing WebSocket message: ' + err.message);
+          log('❌ Error parsing WebSocket message: ' + err.message);
+          console.error('Parse error details:', err);
         }
       };
 
       ws.onerror = (e) => {
-        log('WebSocket error: ' + e);
+        log('❌ WebSocket error: ' + (e.message || e));
+        console.error('WebSocket error details:', e);
       };
 
-      ws.onclose = () => {
-        log('WebSocket closed, retrying in 5s...');
+      ws.onclose = (e) => {
+        log('⚠️ WebSocket closed (code: ' + e.code + '), retrying in 5s...');
         wsReconnectTimeout = setTimeout(connectWebsocket, 5000);
       };
     } catch (err) {
-      log('WebSocket connection failed: ' + err.message);
+      log('❌ WebSocket connection failed: ' + err.message);
+      console.error('WebSocket exception:', err);
+      wsReconnectTimeout = setTimeout(connectWebsocket, 5000);
     }
   }
 
