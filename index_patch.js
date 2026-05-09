@@ -1,22 +1,4 @@
-/*
- * ============================================================
- *  PATCH FILE — index.html  (YTM Song Request)
- *  Apply 3 replacements to make obs-overlay.html sync properly
- * ============================================================
- *
- *  HOW TO APPLY:
- *  Open index.html in a text editor (VS Code recommended).
- *  Use Ctrl+H (Find & Replace) for each patch below.
- *  Make sure "Use Regular Expressions" is OFF.
- * ============================================================
- */
 
-
-/* ───────────────────────────────────────────────────────────
-   PATCH 1 of 3 — FIND this exact block:
-   ─────────────────────────────────────────────────────────── */
-
-/*
         function updateNowPlayingOverlay(songInfo) {
             if (songInfo) {
                 const payload = { id: songInfo.id, title: songInfo.title, author: songInfo.author, user: songInfo.user, duration: songInfo.duration || 0, stopped: false, ts: Date.now() };
@@ -34,9 +16,6 @@
         }
 */
 
-/* ─── REPLACE WITH: ─────────────────────────────────────── */
-
-/*
         let syncInterval = null;
 
         function broadcastWS(name, payload) {
@@ -76,11 +55,7 @@
 */
 
 
-/* ───────────────────────────────────────────────────────────
-   PATCH 2 of 3 — FIND this exact block:
-   ─────────────────────────────────────────────────────────── */
 
-/*
         function onPlayerStateChange(e) {
             if (e.data === 0) playNext(); 
             if (e.data === 1) {           
@@ -90,9 +65,7 @@
         }
 */
 
-/* ─── REPLACE WITH: ─────────────────────────────────────── */
 
-/*
         function onPlayerStateChange(e) {
             if (e.data === 0) {
                 playNext();
@@ -117,20 +90,14 @@
 */
 
 
-/* ───────────────────────────────────────────────────────────
-   PATCH 3 of 3 — FIND this exact block:
-   ─────────────────────────────────────────────────────────── */
 
-/*
         function stopSongUI() { 
             player.stopVideo(); 
             document.getElementById('now-playing-title').innerText = "STOP"; 
         }
 */
 
-/* ─── REPLACE WITH: ─────────────────────────────────────── */
 
-/*
         function stopSongUI() {
             player.stopVideo();
             document.getElementById('now-playing-title').innerText = "STOP";
