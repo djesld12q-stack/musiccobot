@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OBS Now Playing Overlay</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    font-family: 'Segoe UI', sans-serif;
+    width: 420px;
+    height: auto;
+    overflow: hidden;
+  }
+
+  /* ─── OUTER CARD ─── */
+  #player-card {
+    position: relative;
+    width: 420px;
+    background: rgba(10, 10, 14, 0.92);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 14px 16px 12px 14px;
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+    transform: translateY(30px);
+    opacity: 0;
+    transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease;
+  }
+
+  #player-card.visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* accent glow behind thumbnail */
+  #player-card::before {
+    content: '';
+    position: absolute;
+    left: -30px; top: -30px;
+    width: 140px; height: 140px;
+    background: var(--accent-color, rgba(145,70,255,0.25));
+    border-radius: 50%;
+    filter: blur(40px);
+    pointer-events: none;
+    transition: background 1.2s ease;
+    z-index: 0;
+  }
+
+  /* subtle scanline overlay */
+  #player-card::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0,0,0,0.04) 3px,
+      rgba(0,0,0,0.04) 4px
+    );
+    border-radius: 14px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .inner { position: relative; z-index: 1; }
+
+  /* ─── TOP ROW ─── */
+  .top-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  /* thumbnail */
+  .thumb-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 68px;
+    height: 50px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  }
+
+  .thumb-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.4s;
+  }
+
+  /* EQ bars overlay on thumb */
+  .eq-overlay {
+    position: absolute;
+    bottom: 4px; right: 4px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+  }
+
+  .eq-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: #fff;
+    animation: eq 0.6s ease-in-out infinite alternate;
+  }
+  .eq-bar:nth-child(1) { animation-duration: 0.45s; animation-delay: 0.00s; }
+  .eq-bar:nth-child(2) { animation-duration: 0.60s; animation-delay: 0.10s; }
+  .eq-bar:nth-child(3) { animation-duration: 0.50s; animation-delay: 0.05s; }
+  .eq-bar:nth-child(4) { animation-duration: 0.70s; animation-delay: 0.15s; }
+  .eq-bar:nth-child(5) { animation-duration: 0.40s; animation-delay: 0.08s; }
+
+  @keyframes eq {
+    0%   { height: 2px;  opacity: 0.5; }
+    100% { height: 14px; opacity: 1;   }
+  }
+
+  /* source badge */
+  .source-badge {
+    position: absolute;
+    top: 4px; left: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgba(145,70,255,0.85);
+    color: #fff;
+    line-height: 1.2;
+  }
+
+  /* track info */
+  .track-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  /* label row */
+  .label-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+
+  .label-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 6px #00ff88;
+    animation: pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  .label-text {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #00ff88;
+  }
+
+  /* "Auto" badge */
+  .auto-badge {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.35);
+    padding: 1px 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+  }
+
+  /* song title — marquee */
+  .title-wrap {
+    overflow: hidden;
+    white-space: nowrap;
+    mask-image: linear-gradient(to right, black 80%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  }
+
+  .song-title {
+    display: inline-block;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    animation: none;
+  }
+
+  .song-title.scrolling {
+    animation: marquee 12s linear infinite;
+  }
+
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    15%  { transform: translateX(0); }
+    85%  { transform: translateX(var(--scroll-dist, -60px)); }
+    100% { transform: translateX(var(--scroll-dist, -60px)); }
+  }
+
+  .song-author {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .time {
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: rgba(255,255,255,0.5);
+    flex-shrink: 0;
+    min-width: 32px;
+  }
+  .time.end { text-align: right; }
+
+  .bar-wrap {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 2px;
+    overflow: visible;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent-bar, #9146ff);
+    transition: width 0.8s linear, background 1.2s ease;
+    position: relative;
+  }
+
+  /* thumb circle on bar */
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    right: -4px; top: 50%;
+    transform: translateY(-50%);
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(255,255,255,0.6);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .bar-wrap:hover .bar-fill::after { opacity: 1; }
+
+  /* waveform visualizer */
+  .wave-bars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 16px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .w-bar {
+    flex-shrink: 0;
+    width: 3px;
+    border-radius: 1px;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.3s;
+  }
+
+  .w-bar.played {
+    background: var(--accent-bar, #9146ff);
+  }
+
+  /* ─── REQUESTED BY ─── */
+  .req-row {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+  }
+
+  .req-user {
+    color: #bf94ff;
+    font-weight: 600;
+  }
+
+  /* ─── STATE: NO SONG ─── */
+  #player-card.no-song .inner {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .no-song-msg {
+    display: none;
+    position: absolute;
+    inset: 0; z-index: 2;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.3);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  #player-card.no-song .no-song-msg {
+    display: flex;
+  }
+
+</style>
+</head>
+<body>
+
+<div id="player-card">
+  <div class="no-song-msg">No song playing</div>
+  <div class="inner">
+    <div class="top-row">
+      <!-- thumbnail -->
+      <div class="thumb-wrap">
+        <img id="thumb" src="https://i.ytimg.com/vi/T8Xb_7YDroQ/default.jpg" alt="thumb">
+        <div class="source-badge" id="source-badge">Auto</div>
+        <div class="eq-overlay">
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+        </div>
+      </div>
+      <!-- info -->
+      <div class="track-info">
+        <div class="label-row">
+          <div class="label-dot"></div>
+          <span class="label-text">Now Playing</span>
+          <span class="auto-badge" id="mode-badge">Auto</span>
+        </div>
+        <div class="title-wrap">
+          <span class="song-title" id="song-title">Katy Perry – Last Friday Night (Lyrics)</span>
+        </div>
+        <div class="song-author" id="song-author">Rap Samurai</div>
+      </div>
+    </div>
+
+    <!-- progress / waveform -->
+    <div class="progress-row">
+      <span class="time" id="time-cur">2:24</span>
+
+      <div class="bar-wrap" id="bar-wrap" title="Progress">
+        <!-- waveform bars (fake static) -->
+        <div class="wave-bars" id="wave-bars"></div>
+        <!-- smooth fill overlay -->
+        <div style="position:absolute;inset:0;pointer-events:none;">
+          <div class="bar-fill" id="bar-fill" style="width:63%;"></div>
+        </div>
+      </div>
+
+      <span class="time end" id="time-total">3:50</span>
+    </div>
+
+    <!-- requested by -->
+    <div class="req-row" id="req-row">
+      <span>Requested by</span>
+      <span class="req-user" id="req-user">@Twitch_User</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── CONFIGURATION ────────────────────────────────────────────
+   Connect this overlay to your musiccobot via WebSocket.
+   The overlay listens for the same events your main panel does.
+   
+   HOW TO USE:
+   1. Add this file as a Browser Source in OBS (420×120 px recommended)
+   2. Make sure "Shutdown source when not visible" is UNCHECKED
+   3. Set WS_PORT to match your Streamer.bot WebSocket port
+─────────────────────────────────────────────────────────────── */
+const WS_PORT = 8080;
+
+/* accent colors by source type */
+const COLORS = {
+  request: { accent: 'rgba(145,70,255,0.3)',  bar: '#9146ff', badge: 'rgba(145,70,255,0.85)' },
+  manual:  { accent: 'rgba(0,136,255,0.3)',    bar: '#0088ff', badge: 'rgba(0,136,255,0.85)'  },
+  auto:    { accent: 'rgba(255,204,0,0.22)',   bar: '#ffcc00', badge: 'rgba(255,204,0,0.8)'   },
+};
+
+/* ─── STATE ─── */
+let currentSong = null;
+let startTime   = null;
+let totalSec    = 0;
+let ticker      = null;
+let ws          = null;
+
+/* ─── ELEMENTS ─── */
+const card       = document.getElementById('player-card');
+const thumb      = document.getElementById('thumb');
+const srcBadge   = document.getElementById('source-badge');
+const modeBadge  = document.getElementById('mode-badge');
+const titleEl    = document.getElementById('song-title');
+const authorEl   = document.getElementById('song-author');
+const timeCur    = document.getElementById('time-cur');
+const timeTotal  = document.getElementById('time-total');
+const barFill    = document.getElementById('bar-fill');
+const reqRow     = document.getElementById('req-row');
+const reqUser    = document.getElementById('req-user');
+const waveBars   = document.getElementById('wave-bars');
+
+/* ─── BUILD WAVEFORM ─── */
+(function buildWave() {
+  const count = 54;
+  for (let i = 0; i < count; i++) {
+    const b = document.createElement('div');
+    b.className = 'w-bar';
+    const h = 4 + Math.random() * 12;
+    b.style.height = h + 'px';
+    b.dataset.index = i;
+    waveBars.appendChild(b);
+  }
+})();
+
+function updateWave(pct) {
+  const bars = waveBars.querySelectorAll('.w-bar');
+  const played = Math.floor(pct * bars.length);
+  bars.forEach((b, i) => {
+    b.classList.toggle('played', i < played);
+  });
+}
+
+/* ─── FORMAT TIME ─── */
+function fmt(s) {
+  s = Math.max(0, Math.round(s));
+  const m = Math.floor(s / 60);
+  const ss = String(s % 60).padStart(2, '0');
+  return m + ':' + ss;
+}
+
+/* ─── APPLY COLORS ─── */
+function applyColors(type) {
+  const c = COLORS[type] || COLORS.auto;
+  card.style.setProperty('--accent-color', c.accent);
+  card.style.setProperty('--accent-bar', c.bar);
+  srcBadge.style.background = c.badge;
+}
+
+/* ─── SHOW SONG ─── */
+function showSong(song) {
+  currentSong = song;
+  startTime   = Date.now();
+  totalSec    = song.duration || 0;
+
+  const type = song.user === 'Auto' ? 'auto' : (song.user === 'Streamer' ? 'manual' : 'request');
+  applyColors(type);
+
+  /* thumbnail */
+  thumb.style.opacity = 0;
+  thumb.src = `https://i.ytimg.com/vi/${song.id}/mqdefault.jpg`;
+  thumb.onload = () => { thumb.style.opacity = 1; };
+
+  /* badge */
+  const badgeLabels = { auto: 'Auto', manual: 'Manual', request: '!SR' };
+  srcBadge.textContent = badgeLabels[type];
+  modeBadge.textContent = badgeLabels[type];
+
+  /* title */
+  titleEl.classList.remove('scrolling');
+  titleEl.style.removeProperty('--scroll-dist');
+  titleEl.textContent = song.title || 'Unknown Track';
+  authorEl.textContent = song.author || '';
+
+  /* marquee if title overflows */
+  requestAnimationFrame(() => {
+    const wrap = titleEl.parentElement;
+    const overflow = titleEl.scrollWidth - wrap.clientWidth;
+    if (overflow > 10) {
+      titleEl.style.setProperty('--scroll-dist', `-${overflow + 20}px`);
+      titleEl.classList.add('scrolling');
+    }
+  });
+
+  /* time */
+  timeTotal.textContent = fmt(totalSec);
+
+  /* requested by */
+  if (type === 'request' && song.user) {
+    reqRow.style.display = 'flex';
+    reqUser.textContent = '@' + song.user;
+  } else {
+    reqRow.style.display = 'none';
+  }
+
+  card.classList.remove('no-song');
+  card.classList.add('visible');
+
+  /* tick */
+  clearInterval(ticker);
+  ticker = setInterval(tick, 800);
+  tick();
+}
+
+/* ─── TICK ─── */
+function tick() {
+  if (!currentSong || !startTime) return;
+  const elapsed = (Date.now() - startTime) / 1000;
+  const pct = totalSec > 0 ? Math.min(1, elapsed / totalSec) : 0;
+
+  timeCur.textContent = fmt(elapsed);
+  barFill.style.width = (pct * 100).toFixed(1) + '%';
+  updateWave(pct);
+
+  if (elapsed >= totalSec && totalSec > 0) {
+    clearInterval(ticker);
+  }
+}
+
+/* ─── CLEAR ─── */
+function clearSong() {
+  clearInterval(ticker);
+  currentSong = null;
+  card.classList.add('no-song');
+}
+
+/* ─── WEBSOCKET ─── */
+function connect() {
+  try {
+    ws = new WebSocket(`ws://localhost:${WS_PORT}/`);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ request: 'Subscribe', events: { General: ['Custom'] }, id: 'OvSub' }));
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const raw = JSON.parse(e.data.toString());
+        let inner = null;
+        if (raw.data?.data) inner = JSON.parse(raw.data.data);
+        else if (raw.type)  inner = raw;
+
+        if (!inner) return;
+
+        if (inner.type === 'NOW_PLAYING') {
+          showSong(inner);
+        } else if (inner.type === 'SONG_STOPPED' || inner.type === 'STOP_SONG') {
+          clearSong();
+        }
+      } catch (_) {}
+    };
+
+    ws.onclose = () => setTimeout(connect, 4000);
+  } catch (_) {
+    setTimeout(connect, 4000);
+  }
+}
+
+/* ─── DEMO MODE (runs when no WS) ─── */
+(function demo() {
+  const songs = [
+    { id: 'T8Xb_7YDroQ', title: 'Katy Perry – Last Friday Night (Lyrics)', author: 'Rap Samurai', duration: 230, user: 'TwitchFan99' },
+    { id: 'dQw4w9WgXcQ',  title: 'Rick Astley – Never Gonna Give You Up', author: 'RickAstleyVEVO', duration: 213, user: 'Auto' },
+    { id: 'lDK9QqIzhwk',  title: 'Dua Lipa – Levitating (Official Music Video)', author: 'Dua Lipa', duration: 203, user: 'Streamer' },
+  ];
+
+  let idx = 0;
+
+  function next() {
+    showSong(songs[idx % songs.length]);
+    idx++;
+    setTimeout(next, (songs[(idx - 1) % songs.length].duration || 30) * 1000);
+  }
+
+  /* try WS first, fall back to demo after 2s */
+  card.classList.add('visible');
+  showSong(songs[0]);
+
+  const wsCheck = setTimeout(() => {
+    /* WS connected fine → WS events take over */
+  }, 2000);
+
+  connect();
+})();
+</script>
+</body>
+</html>
