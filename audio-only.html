@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>YTM Audio Sync Player</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #050505; color: #f4f4f4; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card { width: min(420px, calc(100vw - 32px)); padding: 24px; border-radius: 18px; background: rgba(15,15,20,0.95); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 18px 60px rgba(0,0,0,0.35); text-align: center; }
+  .label { font-size: 0.9rem; color: #8f9bb3; text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 14px; }
+  .title { font-size: 1.3rem; font-weight: 700; line-height: 1.3; margin-bottom: 10px; color: #ffffff; }
+  .meta { font-size: 0.95rem; color: #a5b1cc; margin-bottom: 20px; }
+  .hint { font-size: 0.8rem; color: #6a7a9d; line-height: 1.5; }
+  .hidden-player { position: fixed; bottom: -200px; left: -200px; width: 1px; height: 1px; overflow: hidden; pointer-events: none; z-index: -9999; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="label">YTM Audio Sync</div>
+    <div id="track-title" class="title">Очікування пісні...</div>
+    <div id="track-meta" class="meta">Плеєр готовий. Запустіть трек у головному Index.html.</div>
+    <div class="hint">Ця сторінка відтворює тільки звук із синхронізацією по localStorage.</div>
+  </div>
+
+  <div id="audio-player-container" class="hidden-player"></div>
+
+  <script>
+    const statusTitle = document.getElementById('track-title');
+    const statusMeta = document.getElementById('track-meta');
+
+    let audioPlayer = null;
+    let audioReady = false;
+    let currentAudioId = null;
+    let lastUpdateTs = 0;
+    let pendingAudioAction = null;
+
+    function log(message) {
+      console.log('[YTM Audio Sync] ' + message);
+    }
+
+    function updateOverlay(title, meta) {
+      statusTitle.textContent = title;
+      statusMeta.textContent = meta;
+    }
+
+    function onYouTubeIframeAPIReady() {
+      if (typeof prevYTReady === 'function') prevYTReady();
+      createAudioPlayer();
+    }
+
+    const prevYTReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+    function createAudioPlayer() {
+      if (audioPlayer) return;
+      log('Створюю прихований аудіо-плеєр');
+
+      audioPlayer = new YT.Player('audio-player-container', {
+        width: '1',
+        height: '1',
+        videoId: '',
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          playsinline: 1,
+          disablekb: 1,
+          modestbranding: 1,
+        },
+        events: {
+          onReady: onAudioPlayerReady,
+          onStateChange: onAudioPlayerStateChange,
+          onError: onAudioPlayerError,
+        },
+        origin: window.location.origin,
+      });
+    }
+
+    function onAudioPlayerReady() {
+      audioReady = true;
+      log('Аудіо-плеєр готовий');
+      try {
+        audioPlayer.unMute();
+        audioPlayer.setVolume(100);
+        log('Аудіо без звуку увімкнено, гучність 100');
+      } catch (err) {
+        log('Попередження: не вдалося розблокувати звук: ' + err);
+      }
+      if (pendingAudioAction) {
+        const action = pendingAudioAction;
+        pendingAudioAction = null;
+        action();
+      }
+    }
+
+    function onAudioPlayerStateChange(event) {
+      const names = ['UNSTARTED', 'ENDED', 'PLAYING', 'PAUSED', 'BUFFERING', 'CUED'];
+      log('Стан плеєра: ' + (names[event.data] || event.data));
+    }
+
+    function onAudioPlayerError(event) {
+      log('Помилка плеєра: ' + event.data);
+      currentAudioId = null;
+    }
+
+    function enqueueAudioAction(fn) {
+      if (audioReady) {
+        fn();
+      } else {
+        pendingAudioAction = fn;
+      }
+    }
+
+    function audioLoad(videoId, startSeconds) {
+      if (!audioReady) {
+        log('Черга на завантаження аудіо: ' + videoId);
+        pendingAudioAction = () => audioLoad(videoId, startSeconds);
+        return;
+      }
+      startSeconds = Math.max(0, Math.floor(startSeconds || 0));
+      if (videoId !== currentAudioId) {
+        currentAudioId = videoId;
+        log(`Завантажую аудіо ${videoId} з ${startSeconds}s`);
+        audioPlayer.loadVideoById({ videoId, startSeconds });
+      } else {
+        audioSeekIfDrifted(startSeconds, 3);
+      }
+    }
+
+    function audioPlay() {
+      if (!audioReady) {
+        pendingAudioAction = audioPlay;
+        return;
+      }
+      if (audioPlayer && currentAudioId) {
+        log('Відтворюю аудіо');
+        audioPlayer.playVideo();
+      }
+    }
+
+    function audioPause() {
+      if (!audioReady || !audioPlayer) return;
+      log('Ставлю аудіо на паузу');
+      audioPlayer.pauseVideo();
+    }
+
+    function audioStop() {
+      if (!audioReady || !audioPlayer) return;
+      log('Зупиняю аудіо');
+      audioPlayer.stopVideo();
+      currentAudioId = null;
+    }
+
+    function audioSeekIfDrifted(targetSeconds, threshold) {
+      if (!audioReady || !audioPlayer || !currentAudioId) return;
+      targetSeconds = Math.max(0, Math.floor(targetSeconds || 0));
+      const currentTime = audioPlayer.getCurrentTime() || 0;
+      const drift = Math.abs(currentTime - targetSeconds);
+      if (drift > threshold) {
+        log(`Корекція дрейфу audio ${drift.toFixed(1)}s → ${targetSeconds}s`);
+        audioPlayer.seekTo(targetSeconds, true);
+      }
+    }
+
+    function handlePayload(data) {
+      if (!data || typeof data !== 'object') return;
+      if (!data.type || !data.ts) return;
+
+      if (data.type === 'NOW_PLAYING') {
+        if (data.stopped || !data.id) {
+          updateOverlay('Очікування пісні...', 'Головний плеєр зупинено.');
+          audioStop();
+          return;
+        }
+        updateOverlay(data.title || 'Unknown title', data.author ? 'Автор: ' + data.author : '');
+        audioLoad(data.id, data.elapsed || 0);
+        if (data.paused) {
+          audioPause();
+        } else {
+          audioPlay();
+        }
+      }
+      else if (data.type === 'NOW_PAUSED') {
+        updateOverlay(data.title || 'Paused', 'Пауза — ' + (data.author || '')); 
+        audioPause();
+      }
+      else if (data.type === 'NOW_RESUMED') {
+        updateOverlay(data.title || 'Now playing', 'Відновлено — ' + (data.author || ''));
+        audioLoad(data.id, data.elapsed || 0);
+        audioPlay();
+      }
+      else if (data.type === 'NOW_STOPPED') {
+        updateOverlay('Очікування пісні...', 'Головний плеєр зупинено.');
+        audioStop();
+      }
+      else if (data.type === 'NOW_SYNC') {
+        if (data.id === currentAudioId) {
+          audioSeekIfDrifted(data.elapsed || 0, 3);
+          if (data.paused) {
+            audioPause();
+          } else {
+            audioPlay();
+          }
+        }
+      }
+    }
+
+    function pollStorage() {
+      try {
+        const raw = localStorage.getItem('ytm_now_playing');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data.ts && data.ts !== lastUpdateTs) {
+          lastUpdateTs = data.ts;
+          handlePayload(data);
+        }
+      } catch (error) {
+        console.error('[YTM Audio Sync] Помилка обробки localStorage:', error);
+      }
+    }
+
+    setInterval(pollStorage, 200);
+    setTimeout(pollStorage, 500);
+
+    if (!window.YT || !window.YT.Player) {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(script);
+    } else {
+      onYouTubeIframeAPIReady();
+    }
+  </script>
+</body>
+</html>
