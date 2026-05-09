@@ -1,635 +1,190 @@
-                    GNU GENERAL PUBLIC LICENSE
-                       Version 3, 29 June 2007
-
- Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
- Everyone is permitted to copy and distribute verbatim copies
- of this license document, but changing it is not allowed.
-
-                            Preamble
-
-  The GNU General Public License is a free, copyleft license for
-software and other kinds of works.
-
-  The licenses for most software and other practical works are designed
-to take away your freedom to share and change the works.  By contrast,
-the GNU General Public License is intended to guarantee your freedom to
-share and change all versions of a program--to make sure it remains free
-software for all its users.  We, the Free Software Foundation, use the
-GNU General Public License for most of our software; it applies also to
-any other work released this way by its authors.  You can apply it to
-your programs, too.
-
-  When we speak of free software, we are referring to freedom, not
-price.  Our General Public Licenses are designed to make sure that you
-have the freedom to distribute copies of free software (and charge for
-them if you wish), that you receive source code or can get it if you
-want it, that you can change the software or use pieces of it in new
-free programs, and that you know you can do these things.
-
-  To protect your rights, we need to prevent others from denying you
-these rights or asking you to surrender the rights.  Therefore, you have
-certain responsibilities if you distribute copies of the software, or if
-you modify it: responsibilities to respect the freedom of others.
-
-  For example, if you distribute copies of such a program, whether
-gratis or for a fee, you must pass on to the recipients the same
-freedoms that you received.  You must make sure that they, too, receive
-or can get the source code.  And you must show them these terms so they
-know their rights.
-
-  Developers that use the GNU GPL protect your rights with two steps:
-(1) assert copyright on the software, and (2) offer you this License
-giving you legal permission to copy, distribute and/or modify it.
-
-  For the developers' and authors' protection, the GPL clearly explains
-that there is no warranty for this free software.  For both users' and
-authors' sake, the GPL requires that modified versions be marked as
-changed, so that their problems will not be attributed erroneously to
-authors of previous versions.
-
-  Some devices are designed to deny users access to install or run
-modified versions of the software inside them, although the manufacturer
-can do so.  This is fundamentally incompatible with the aim of
-protecting users' freedom to change the software.  The systematic
-pattern of such abuse occurs in the area of products for individuals to
-use, which is precisely where it is most unacceptable.  Therefore, we
-have designed this version of the GPL to prohibit the practice for those
-products.  If such problems arise substantially in other domains, we
-stand ready to extend this provision to those domains in future versions
-of the GPL, as needed to protect the freedom of users.
-
-  Finally, every program is threatened constantly by software patents.
-States should not allow patents to restrict development and use of
-software on general-purpose computers, but in those that do, we wish to
-avoid the special danger that patents applied to a free program could
-make it effectively proprietary.  To prevent this, the GPL assures that
-patents cannot be used to render the program non-free.
-
-  The precise terms and conditions for copying, distribution and
-modification follow.
-
-                       TERMS AND CONDITIONS
-
-  0. Definitions.
-
-  "This License" refers to version 3 of the GNU General Public License.
-
-  "Copyright" also means copyright-like laws that apply to other kinds of
-works, such as semiconductor masks.
-
-  "The Program" refers to any copyrightable work licensed under this
-License.  Each licensee is addressed as "you".  "Licensees" and
-"recipients" may be individuals or organizations.
-
-  To "modify" a work means to copy from or adapt all or part of the work
-in a fashion requiring copyright permission, other than the making of an
-exact copy.  The resulting work is called a "modified version" of the
-earlier work or a work "based on" the earlier work.
-
-  A "covered work" means either the unmodified Program or a work based
-on the Program.
-
-  To "propagate" a work means to do anything with it that, without
-permission, would make you directly or secondarily liable for
-infringement under applicable copyright law, except executing it on a
-computer or modifying a private copy.  Propagation includes copying,
-distribution (with or without modification), making available to the
-public, and in some countries other activities as well.
-
-  To "convey" a work means any kind of propagation that enables other
-parties to make or receive copies.  Mere interaction with a user through
-a computer network, with no transfer of a copy, is not conveying.
-
-  An interactive user interface displays "Appropriate Legal Notices"
-to the extent that it includes a convenient and prominently visible
-feature that (1) displays an appropriate copyright notice, and (2)
-tells the user that there is no warranty for the work (except to the
-extent that warranties are provided), that licensees may convey the
-work under this License, and how to view a copy of this License.  If
-the interface presents a list of user commands or options, such as a
-menu, a prominent item in the list meets this criterion.
-
-  1. Source Code.
-
-  The "source code" for a work means the preferred form of the work
-for making modifications to it.  "Object code" means any non-source
-form of a work.
-
-  A "Standard Interface" means an interface that either is an official
-standard defined by a recognized standards body, or, in the case of
-interfaces specified for a particular programming language, one that
-is widely used among developers working in that language.
-
-  The "System Libraries" of an executable work include anything, other
-than the work as a whole, that (a) is included in the normal form of
-packaging a Major Component, but which is not part of that Major
-Component, and (b) serves only to enable use of the work with that
-Major Component, or to implement a Standard Interface for which an
-implementation is available to the public in source code form.  A
-"Major Component", in this context, means a major essential component
-(kernel, window system, and so on) of the specific operating system
-(if any) on which the executable work runs, or a compiler used to
-produce the work, or an object code interpreter used to run it.
-
-  The "Corresponding Source" for a work in object code form means all
-the source code needed to generate, install, and (for an executable
-work) run the object code and to modify the work, including scripts to
-control those activities.  However, it does not include the work's
-System Libraries, or general-purpose tools or generally available free
-programs which are used unmodified in performing those activities but
-which are not part of the work.  For example, Corresponding Source
-includes interface definition files associated with source files for
-the work, and the source code for shared libraries and dynamically
-linked subprograms that the work is specifically designed to require,
-such as by intimate data communication or control flow between those
-subprograms and other parts of the work.
-
-  The Corresponding Source need not include anything that users
-can regenerate automatically from other parts of the Corresponding
-Source.
-
-  The Corresponding Source for a work in source code form is that
-same work.
-
-  2. Basic Permissions.
-
-  All rights granted under this License are granted for the term of
-copyright on the Program, and are irrevocable provided the stated
-conditions are met.  This License explicitly affirms your unlimited
-permission to run the unmodified Program.  The output from running a
-covered work is covered by this License only if the output, given its
-content, constitutes a covered work.  This License acknowledges your
-rights of fair use or other equivalent, as provided by copyright law.
-
-  You may make, run and propagate covered works that you do not
-convey, without conditions so long as your license otherwise remains
-in force.  You may convey covered works to others for the sole purpose
-of having them make modifications exclusively for you, or provide you
-with facilities for running those works, provided that you comply with
-the terms of this License in conveying all material for which you do
-not control copyright.  Those thus making or running the covered works
-for you must do so exclusively on your behalf, under your direction
-and control, on terms that prohibit them from making any copies of
-your copyrighted material outside their relationship with you.
-
-  Conveying under any other circumstances is permitted solely under
-the conditions stated below.  Sublicensing is not allowed; section 10
-makes it unnecessary.
-
-  3. Protecting Users' Legal Rights From Anti-Circumvention Law.
-
-  No covered work shall be deemed part of an effective technological
-measure under any applicable law fulfilling obligations under article
-11 of the WIPO copyright treaty adopted on 20 December 1996, or
-similar laws prohibiting or restricting circumvention of such
-measures.
-
-  When you convey a covered work, you waive any legal power to forbid
-circumvention of technological measures to the extent such circumvention
-is effected by exercising rights under this License with respect to
-the covered work, and you disclaim any intention to limit operation or
-modification of the work as a means of enforcing, against the work's
-users, your or third parties' legal rights to forbid circumvention of
-technological measures.
-
-  4. Conveying Verbatim Copies.
-
-  You may convey verbatim copies of the Program's source code as you
-receive it, in any medium, provided that you conspicuously and
-appropriately publish on each copy an appropriate copyright notice;
-keep intact all notices stating that this License and any
-non-permissive terms added in accord with section 7 apply to the code;
-keep intact all notices of the absence of any warranty; and give all
-recipients a copy of this License along with the Program.
-
-  You may charge any price or no price for each copy that you convey,
-and you may offer support or warranty protection for a fee.
-
-  5. Conveying Modified Source Versions.
-
-  You may convey a work based on the Program, or the modifications to
-produce it from the Program, in the form of source code under the
-terms of section 4, provided that you also meet all of these conditions:
-
-    a) The work must carry prominent notices stating that you modified
-    it, and giving a relevant date.
-
-    b) The work must carry prominent notices stating that it is
-    released under this License and any conditions added under section
-    7.  This requirement modifies the requirement in section 4 to
-    "keep intact all notices".
-
-    c) You must license the entire work, as a whole, under this
-    License to anyone who comes into possession of a copy.  This
-    License will therefore apply, along with any applicable section 7
-    additional terms, to the whole of the work, and all its parts,
-    regardless of how they are packaged.  This License gives no
-    permission to license the work in any other way, but it does not
-    invalidate such permission if you have separately received it.
-
-    d) If the work has interactive user interfaces, each must display
-    Appropriate Legal Notices; however, if the Program has interactive
-    interfaces that do not display Appropriate Legal Notices, your
-    work need not make them do so.
-
-  A compilation of a covered work with other separate and independent
-works, which are not by their nature extensions of the covered work,
-and which are not combined with it such as to form a larger program,
-in or on a volume of a storage or distribution medium, is called an
-"aggregate" if the compilation and its resulting copyright are not
-used to limit the access or legal rights of the compilation's users
-beyond what the individual works permit.  Inclusion of a covered work
-in an aggregate does not cause this License to apply to the other
-parts of the aggregate.
-
-  6. Conveying Non-Source Forms.
-
-  You may convey a covered work in object code form under the terms
-of sections 4 and 5, provided that you also convey the
-machine-readable Corresponding Source under the terms of this License,
-in one of these ways:
-
-    a) Convey the object code in, or embodied in, a physical product
-    (including a physical distribution medium), accompanied by the
-    Corresponding Source fixed on a durable physical medium
-    customarily used for software interchange.
-
-    b) Convey the object code in, or embodied in, a physical product
-    (including a physical distribution medium), accompanied by a
-    written offer, valid for at least three years and valid for as
-    long as you offer spare parts or customer support for that product
-    model, to give anyone who possesses the object code either (1) a
-    copy of the Corresponding Source for all the software in the
-    product that is covered by this License, on a durable physical
-    medium customarily used for software interchange, for a price no
-    more than your reasonable cost of physically performing this
-    conveying of source, or (2) access to copy the
-    Corresponding Source from a network server at no charge.
-
-    c) Convey individual copies of the object code with a copy of the
-    written offer to provide the Corresponding Source.  This
-    alternative is allowed only occasionally and noncommercially, and
-    only if you received the object code with such an offer, in accord
-    with subsection 6b.
-
-    d) Convey the object code by offering access from a designated
-    place (gratis or for a charge), and offer equivalent access to the
-    Corresponding Source in the same way through the same place at no
-    further charge.  You need not require recipients to copy the
-    Corresponding Source along with the object code.  If the place to
-    copy the object code is a network server, the Corresponding Source
-    may be on a different server (operated by you or a third party)
-    that supports equivalent copying facilities, provided you maintain
-    clear directions next to the object code saying where to find the
-    Corresponding Source.  Regardless of what server hosts the
-    Corresponding Source, you remain obligated to ensure that it is
-    available for as long as needed to satisfy these requirements.
-
-    e) Convey the object code using peer-to-peer transmission, provided
-    you inform other peers where the object code and Corresponding
-    Source of the work are being offered to the general public at no
-    charge under subsection 6d.
-
-  A separable portion of the object code, whose source code is excluded
-from the Corresponding Source as a System Library, need not be
-included in conveying the object code work.
-
-  A "User Product" is either (1) a "consumer product", which means any
-tangible personal property which is normally used for personal, family,
-or household purposes, or (2) anything designed or sold for incorporation
-into a dwelling.  In determining whether a product is a consumer product,
-doubtful cases shall be resolved in favor of coverage.  For a particular
-product received by a particular user, "normally used" refers to a
-typical or common use of that class of product, regardless of the status
-of the particular user or of the way in which the particular user
-actually uses, or expects or is expected to use, the product.  A product
-is a consumer product regardless of whether the product has substantial
-commercial, industrial or non-consumer uses, unless such uses represent
-the only significant mode of use of the product.
-
-  "Installation Information" for a User Product means any methods,
-procedures, authorization keys, or other information required to install
-and execute modified versions of a covered work in that User Product from
-a modified version of its Corresponding Source.  The information must
-suffice to ensure that the continued functioning of the modified object
-code is in no case prevented or interfered with solely because
-modification has been made.
-
-  If you convey an object code work under this section in, or with, or
-specifically for use in, a User Product, and the conveying occurs as
-part of a transaction in which the right of possession and use of the
-User Product is transferred to the recipient in perpetuity or for a
-fixed term (regardless of how the transaction is characterized), the
-Corresponding Source conveyed under this section must be accompanied
-by the Installation Information.  But this requirement does not apply
-if neither you nor any third party retains the ability to install
-modified object code on the User Product (for example, the work has
-been installed in ROM).
-
-  The requirement to provide Installation Information does not include a
-requirement to continue to provide support service, warranty, or updates
-for a work that has been modified or installed by the recipient, or for
-the User Product in which it has been modified or installed.  Access to a
-network may be denied when the modification itself materially and
-adversely affects the operation of the network or violates the rules and
-protocols for communication across the network.
-
-  Corresponding Source conveyed, and Installation Information provided,
-in accord with this section must be in a format that is publicly
-documented (and with an implementation available to the public in
-source code form), and must require no special password or key for
-unpacking, reading or copying.
-
-  7. Additional Terms.
-
-  "Additional permissions" are terms that supplement the terms of this
-License by making exceptions from one or more of its conditions.
-Additional permissions that are applicable to the entire Program shall
-be treated as though they were included in this License, to the extent
-that they are valid under applicable law.  If additional permissions
-apply only to part of the Program, that part may be used separately
-under those permissions, but the entire Program remains governed by
-this License without regard to the additional permissions.
-
-  When you convey a copy of a covered work, you may at your option
-remove any additional permissions from that copy, or from any part of
-it.  (Additional permissions may be written to require their own
-removal in certain cases when you modify the work.)  You may place
-additional permissions on material, added by you to a covered work,
-for which you have or can give appropriate copyright permission.
-
-  Notwithstanding any other provision of this License, for material you
-add to a covered work, you may (if authorized by the copyright holders of
-that material) supplement the terms of this License with terms:
-
-    a) Disclaiming warranty or limiting liability differently from the
-    terms of sections 15 and 16 of this License; or
-
-    b) Requiring preservation of specified reasonable legal notices or
-    author attributions in that material or in the Appropriate Legal
-    Notices displayed by works containing it; or
-
-    c) Prohibiting misrepresentation of the origin of that material, or
-    requiring that modified versions of such material be marked in
-    reasonable ways as different from the original version; or
-
-    d) Limiting the use for publicity purposes of names of licensors or
-    authors of the material; or
-
-    e) Declining to grant rights under trademark law for use of some
-    trade names, trademarks, or service marks; or
-
-    f) Requiring indemnification of licensors and authors of that
-    material by anyone who conveys the material (or modified versions of
-    it) with contractual assumptions of liability to the recipient, for
-    any liability that these contractual assumptions directly impose on
-    those licensors and authors.
-
-  All other non-permissive additional terms are considered "further
-restrictions" within the meaning of section 10.  If the Program as you
-received it, or any part of it, contains a notice stating that it is
-governed by this License along with a term that is a further
-restriction, you may remove that term.  If a license document contains
-a further restriction but permits relicensing or conveying under this
-License, you may add to a covered work material governed by the terms
-of that license document, provided that the further restriction does
-not survive such relicensing or conveying.
-
-  If you add terms to a covered work in accord with this section, you
-must place, in the relevant source files, a statement of the
-additional terms that apply to those files, or a notice indicating
-where to find the applicable terms.
-
-  Additional terms, permissive or non-permissive, may be stated in the
-form of a separately written license, or stated as exceptions;
-the above requirements apply either way.
-
-  8. Termination.
-
-  You may not propagate or modify a covered work except as expressly
-provided under this License.  Any attempt otherwise to propagate or
-modify it is void, and will automatically terminate your rights under
-this License (including any patent licenses granted under the third
-paragraph of section 11).
-
-  However, if you cease all violation of this License, then your
-license from a particular copyright holder is reinstated (a)
-provisionally, unless and until the copyright holder explicitly and
-finally terminates your license, and (b) permanently, if the copyright
-holder fails to notify you of the violation by some reasonable means
-prior to 60 days after the cessation.
-
-  Moreover, your license from a particular copyright holder is
-reinstated permanently if the copyright holder notifies you of the
-violation by some reasonable means, this is the first time you have
-received notice of violation of this License (for any work) from that
-copyright holder, and you cure the violation prior to 30 days after
-your receipt of the notice.
-
-  Termination of your rights under this section does not terminate the
-licenses of parties who have received copies or rights from you under
-this License.  If your rights have been terminated and not permanently
-reinstated, you do not qualify to receive new licenses for the same
-material under section 10.
-
-  9. Acceptance Not Required for Having Copies.
-
-  You are not required to accept this License in order to receive or
-run a copy of the Program.  Ancillary propagation of a covered work
-occurring solely as a consequence of using peer-to-peer transmission
-to receive a copy likewise does not require acceptance.  However,
-nothing other than this License grants you permission to propagate or
-modify any covered work.  These actions infringe copyright if you do
-not accept this License.  Therefore, by modifying or propagating a
-covered work, you indicate your acceptance of this License to do so.
-
-  10. Automatic Licensing of Downstream Recipients.
-
-  Each time you convey a covered work, the recipient automatically
-receives a license from the original licensors, to run, modify and
-propagate that work, subject to this License.  You are not responsible
-for enforcing compliance by third parties with this License.
-
-  An "entity transaction" is a transaction transferring control of an
-organization, or substantially all assets of one, or subdividing an
-organization, or merging organizations.  If propagation of a covered
-work results from an entity transaction, each party to that
-transaction who receives a copy of the work also receives whatever
-licenses to the work the party's predecessor in interest had or could
-give under the previous paragraph, plus a right to possession of the
-Corresponding Source of the work from the predecessor in interest, if
-the predecessor has it or can get it with reasonable efforts.
-
-  You may not impose any further restrictions on the exercise of the
-rights granted or affirmed under this License.  For example, you may
-not impose a license fee, royalty, or other charge for exercise of
-rights granted under this License, and you may not initiate litigation
-(including a cross-claim or counterclaim in a lawsuit) alleging that
-any patent claim is infringed by making, using, selling, offering for
-sale, or importing the Program or any portion of it.
-
-  11. Patents.
-
-  A "contributor" is a copyright holder who authorizes use under this
-License of the Program or a work on which the Program is based.  The
-work thus licensed is called the contributor's "contributor version".
-
-  A contributor's "essential patent claims" are all patent claims
-owned or controlled by the contributor, whether already acquired or
-hereafter acquired, that would be infringed by some manner, permitted
-by this License, of making, using, or selling its contributor version,
-but do not include claims that would be infringed only as a
-consequence of further modification of the contributor version.  For
-purposes of this definition, "control" includes the right to grant
-patent sublicenses in a manner consistent with the requirements of
-this License.
-
-  Each contributor grants you a non-exclusive, worldwide, royalty-free
-patent license under the contributor's essential patent claims, to
-make, use, sell, offer for sale, import and otherwise run, modify and
-propagate the contents of its contributor version.
-
-  In the following three paragraphs, a "patent license" is any express
-agreement or commitment, however denominated, not to enforce a patent
-(such as an express permission to practice a patent or covenant not to
-sue for patent infringement).  To "grant" such a patent license to a
-party means to make such an agreement or commitment not to enforce a
-patent against the party.
-
-  If you convey a covered work, knowingly relying on a patent license,
-and the Corresponding Source of the work is not available for anyone
-to copy, free of charge and under the terms of this License, through a
-publicly available network server or other readily accessible means,
-then you must either (1) cause the Corresponding Source to be so
-available, or (2) arrange to deprive yourself of the benefit of the
-patent license for this particular work, or (3) arrange, in a manner
-consistent with the requirements of this License, to extend the patent
-license to downstream recipients.  "Knowingly relying" means you have
-actual knowledge that, but for the patent license, your conveying the
-covered work in a country, or your recipient's use of the covered work
-in a country, would infringe one or more identifiable patents in that
-country that you have reason to believe are valid.
-
-  If, pursuant to or in connection with a single transaction or
-arrangement, you convey, or propagate by procuring conveyance of, a
-covered work, and grant a patent license to some of the parties
-receiving the covered work authorizing them to use, propagate, modify
-or convey a specific copy of the covered work, then the patent license
-you grant is automatically extended to all recipients of the covered
-work and works based on it.
-
-  A patent license is "discriminatory" if it does not include within
-the scope of its coverage, prohibits the exercise of, or is
-conditioned on the non-exercise of one or more of the rights that are
-specifically granted under this License.  You may not convey a covered
-work if you are a party to an arrangement with a third party that is
-in the business of distributing software, under which you make payment
-to the third party based on the extent of your activity of conveying
-the work, and under which the third party grants, to any of the
-parties who would receive the covered work from you, a discriminatory
-patent license (a) in connection with copies of the covered work
-conveyed by you (or copies made from those copies), or (b) primarily
-for and in connection with specific products or compilations that
-contain the covered work, unless you entered into that arrangement,
-or that patent license was granted, prior to 28 March 2007.
-
-  Nothing in this License shall be construed as excluding or limiting
-any implied license or other defenses to infringement that may
-otherwise be available to you under applicable patent law.
-
-  12. No Surrender of Others' Freedom.
-
-  If conditions are imposed on you (whether by court order, agreement or
-otherwise) that contradict the conditions of this License, they do not
-excuse you from the conditions of this License.  If you cannot convey a
-covered work so as to satisfy simultaneously your obligations under this
-License and any other pertinent obligations, then as a consequence you may
-not convey it at all.  For example, if you agree to terms that obligate you
-to collect a royalty for further conveying from those to whom you convey
-the Program, the only way you could satisfy both those terms and this
-License would be to refrain entirely from conveying the Program.
-
-  13. Use with the GNU Affero General Public License.
-
-  Notwithstanding any other provision of this License, you have
-permission to link or combine any covered work with a work licensed
-under version 3 of the GNU Affero General Public License into a single
-combined work, and to convey the resulting work.  The terms of this
-License will continue to apply to the part which is the covered work,
-but the special requirements of the GNU Affero General Public License,
-section 13, concerning interaction through a network will apply to the
-combination as such.
-
-  14. Revised Versions of this License.
-
-  The Free Software Foundation may publish revised and/or new versions of
-the GNU General Public License from time to time.  Such new versions will
-be similar in spirit to the present version, but may differ in detail to
-address new problems or concerns.
-
-  Each version is given a distinguishing version number.  If the
-Program specifies that a certain numbered version of the GNU General
-Public License "or any later version" applies to it, you have the
-option of following the terms and conditions either of that numbered
-version or of any later version published by the Free Software
-Foundation.  If the Program does not specify a version number of the
-GNU General Public License, you may choose any version ever published
-by the Free Software Foundation.
-
-  If the Program specifies that a proxy can decide which future
-versions of the GNU General Public License can be used, that proxy's
-public statement of acceptance of a version permanently authorizes you
-to choose that version for the Program.
-
-  Later license versions may give you additional or different
-permissions.  However, no additional obligations are imposed on any
-author or copyright holder as a result of your choosing to follow a
-later version.
-
-  15. Disclaimer of Warranty.
-
-  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
-APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
-HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
-OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
-IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
-ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
-
-  16. Limitation of Liability.
-
-  IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
-WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
-THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
-GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
-USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
-DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
-PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
-EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGES.
-
-  17. Interpretation of Sections 15 and 16.
-
-  If the disclaimer of warranty and limitation of liability provided
-above cannot be given local legal effect according to their terms,
-reviewing courts shall apply local law that most closely approximates
-an absolute waiver of all civil liability in connection with the
-Program, unless a warranty or assumption of liability accompanies a
-copy of the Program in return for a fee.
-
-                     END OF TERMS AND CONDITIONS
-
-            How to Apply These Terms to Your New Programs
-
-  If you develop a new program, and you want it to be of the greatest
-possible use to the public, the best way to achieve this is to make it
-free software which everyone can redistribute and change under these terms.
-
-  To do so, attach the following notices to the program.  It is safest
-to attach them to the start of each source file to most effectively
-state the exclusion of warranty; and each file should have at least
-the "copyright" line and a pointer to where the full notice is found.
+Авторські права © 2007 Фонд вільного програмного забезпечення, Inc. <https://fsf.org/>
+
+Кожен має право копіювати та розповсюджувати дослівно копії цього ліцензійного документа, але зміна його не дозволяється.
+
+Преамбула
+GNU General Public License — це безкоштовна copyleft ліцензія для програмне забезпечення та інші види робіт.
+
+Ліцензії на більшість програмного забезпечення та інших практичних робіт розробляються щоб забрати у тебе свободу ділитися і змінювати твори. Натомість Загальна публічна ліцензія GNU має гарантувати вашу свободу Діліться та змінюйте всі версії програми — щоб вона залишалася безкоштовною програмне забезпечення для всіх користувачів. Ми, Фонд вільного програмного забезпечення, використовуємо GNU General Public License для більшості нашого програмного забезпечення; Вона також застосовується до будь-які інші твори, опубліковані таким чином її авторами. Ви можете застосувати це до І твої програми теж.
+
+Коли ми говоримо про вільне програмне забезпечення, ми маємо на увазі свободу, а не свободу Ціна. Наші загальнопублічні ліцензії створені для того, щоб гарантувати, що ви мати свободу розповсюджувати копії вільного програмного забезпечення (і стягувати за це їх, якщо хочеш), щоб отримати вихідний код або отримати його, якщо ти Хочете це, щоб ви могли змінювати програмне забезпечення або використовувати його частини в новому Безкоштовні програми, і ви знаєте, що можете це зробити.
+
+Щоб захистити твої права, ми маємо запобігти відмові інших ці права або прохання вас відмовитися від них. Отже, у вас є певні обов'язки, якщо ви розповсюджуєте копії програмного забезпечення, або якщо Ви її змінюєте: обов'язки поважати свободу інших.
+
+Наприклад, якщо ви розповсюджуєте копії такої програми, чи Безкоштовно або за плату, ви повинні передати це отримувачам Свободи, які ти отримав. Ви повинні переконатися, що вони теж отримують Або можна отримати вихідний код. І ви повинні показати їм ці умови, щоб вони Знайте свої права.
+
+Розробники, які використовують GNU GPL, захищають ваші права двома кроками: (1) заявити про авторське право на програмне забезпечення та (2) запропонувати вам цю ліцензію надаючи вам юридичний дозвіл копіювати, розповсюджувати та/або змінювати його.
+
+Для захисту розробників і авторів GPL чітко пояснює що на це безкоштовне програмне забезпечення немає гарантії. Для обох користувачів і Заради авторів, GPL вимагає, щоб модифіковані версії позначалися як змінили, щоб їхні проблеми не були помилково приписані авторів попередніх версій.
+
+Деякі пристрої розроблені так, щоб позбавити користувачів доступу до встановлення або запуску модифіковані версії програмного забезпечення всередині них, хоча виробник Можу це зробити. Це принципово несумісне з метою захист свободи користувачів змінювати програмне забезпечення. Систематична система Патерн такого зловживання виникає у сфері продуктів для окремих осіб Використання, а саме там це найбільш неприйнятно. Отже, ми розробили цю версію GPL, щоб заборонити таку практику для тих, хто Продукти. Якщо такі проблеми суттєво виникають в інших сферах, ми Будьте готові поширити це положення на ці домени у майбутніх версіях GPL, за потреби для захисту свободи користувачів.
+
+Нарешті, кожна програма постійно перебуває під загрозою через патенти на програмне забезпечення. Держави не повинні дозволяти патентам обмежувати розробку та використання програмне забезпечення на універсальних комп'ютерах, але в тих, що мають, ми прагнемо уникнути особливої небезпеки, яку патенти застосовують до вільної програми Зробіть його фактично власницьким. Щоб запобігти цьому, GPL гарантує, що Патенти не можуть бути використані для того, щоб зробити програму невільною.
+
+Точні умови для копіювання, розповсюдження та Після цього слідують модифікації.
+
+УМОВИ ТА ПОЛОЖЕННЯ
+0. Визначення.
+«Ця ліцензія» стосується версії 3 Загальної публічної ліцензії GNU.
+
+«Авторське право» також означає закони, подібні до авторського права, які застосовуються до інших видів таких творів, як напівпровідникові маски.
+
+«Програма» стосується будь-якого твору, що захищений авторським правом, ліцензований за цим Ліцензія. Кожному ліцензіату звертаються як «ви». «Ліцензіатів» та «Отримувачі» можуть бути окремими особами або організаціями.
+
+«Модифікувати» твір означає копіювати або адаптувати всю або частину твору у спосіб, що потребує дозволу авторського права, окрім створення Точна копія. Отримана робота називається «модифікованою версією» Раніша робота або робота «на основі» попередньої роботи.
+
+«Покритий твір» означає або незмінену Програму, або роботу, що базується на творі у програмі.
+
+«Поширювати» твір означає робити з ним будь-що, що без дозволу зробить вас безпосередньо або вторинно відповідальним за порушення відповідно до чинного законодавства про авторське право, за винятком його виконання на Комп'ютер або модифікацію приватної копії. Поширення включає копіювання, розповсюдження (з або без змін), що робить доступним для публічно, а в деяких країнах — інші заходи.
+
+«Передавати» твір означає будь-який вид поширення, який дозволяє іншим сторони мають робити або отримувати копії. Просто взаємодія з користувачем через Комп'ютерна мережа без передачі копії не передає.
+
+Інтерактивний інтерфейс користувача відображає «Відповідні юридичні повідомлення» у тій мірі, що вона включає зручну та помітну функція, яка (1) відображає відповідне повідомлення про авторське право, і (2) повідомляє користувачу, що гарантії на роботу немає (окрім в межі того, що гарантії надаються), що ліцензіати можуть передавати працювати за цією ліцензією та як переглядати копію цієї ліцензії. Якщо Інтерфейс пропонує список користувацьких команд або опцій, таких як Меню, важливий пункт у списку, відповідає цьому критерію.
+
+1. Вихідний код.
+«Вихідний код» твору означає бажану форму твору для внесення змін. «Об'єктний код» означає будь-який невихідний Форма твору.
+
+«Стандартний інтерфейс» означає інтерфейс, який є офіційним Стандарт, визначений визнаним органом зі стандартизації, або, у випадку інтерфейси, визначені для певної мови програмування, яка широко використовується серед розробників, які працюють цією мовою.
+
+«Системні бібліотеки» виконуваного твору включають будь-що, інше ніж робота загалом, що (a) включено до нормальної форми пакування основного компонента, який не є частиною цієї основної частини Компонент, і (b) служать лише для забезпечення використання твору з цим Основний компонент, або реалізувати стандартний інтерфейс, для якого Реалізація доступна для широкої публіки у вигляді вихідного коду. A «Головний компонент» у цьому контексті означає основний суттєвий компонент (ядро, віконна система тощо) конкретної операційної системи (якщо він є), на якому виконується виконувана робота, або компілятор, який використовував створити роботу або інтерпретатор об'єктного коду, який використовується для її виконання.
+
+«Відповідне джерело» для твору у формі об'єктного коду означає всі вихідний код, необхідний для генерації, встановлення та (для виконуваного файла work) запускає об'єктний код і змінює роботу, включно зі скриптами Контролюйте ці дії. Однак це не включає Системні бібліотеки, універсальні інструменти або загальнодоступні безкоштовно програми, які використовуються без змін для виконання цих завдань, але які не є частиною роботи. Наприклад, відповідне джерело включає файли визначення інтерфейсу, пов'язані з вихідними файлами для роботу, а також вихідний код спільних бібліотек і динамічно пов'язані підпрограми, для яких робота спеціально розроблена, наприклад, через інтимну передачу даних або потік керування між ними підпрограми та інші частини роботи.
+
+Відповідне джерело не обов'язково має містити нічого, що користувачі може автоматично відновлюватися з інших частин відповідного Джерело.
+
+Відповідним джерелом для твору у формі вихідного коду є те, що Та сама робота.
+
+2. Базові дозволи.
+Усі права, надані за цією ліцензією, надаються на термін авторське право на Програму, і є невідкличними за умови зазначених Умови виконані. Ця ліцензія чітко підтверджує вашу необмежену кількість дозвіл на запуск незміненої Програми. Вихід при запуску Охоплена робота підпадає під цю ліцензію лише у випадку, якщо результат, враховуючи його Зміст, є охопленою роботою. Ця ліцензія підтверджує вашу права добросовісного використання або інші еквіваленти, передбачені законом про авторське право.
+
+Ви можете створювати, запускати та поширювати закриті твори, яких не використовуєте Передавайте без умов, доки ваша ліцензія залишається інакше у силі. Ви можете передавати покриті твори іншим лише з метою щоб вони вносили зміни виключно для вас або надали вам з умовами для ведення цих робіт, за умови, що ви відповідаєте вимогам умови цієї ліцензії щодо передачі всього матеріалу, для якого ви виконуєте Не контролювати авторське право. Ті, хто таким чином створював або керував критими підприємствами бо ти маєш робити це виключно від свого імені, під твоїм керівництвом та контролю, на умовах, які забороняють їм робити будь-які копії ваші захищені авторським правом матеріали поза їхніми стосунками з вами.
+
+Передача за будь-яких інших обставин дозволена виключно за Умови наведені нижче. Субліцензування не дозволяється; Розділ 10 робить це зайвим.
+
+3. Захист прав користувачів від закону проти обходу.
+Жодна покрита робота не повинна вважатися частиною ефективної технологічної Захід відповідно до будь-якого чинного законодавства, що виконує зобов'язання за статтею 11 договору ВОІВ про авторське право, прийнятого 20 грудня 1996 року, або подібні закони, що забороняють або обмежують обхід таких міри.
+
+Коли ви передаєте захищений твір, ви відмовляєтеся від будь-яких юридичних повноважень забороняти обхід технологічних заходів у тій мірі, в якій таке обходження здійснюється шляхом здійснення прав за цією Ліцензією щодо покрита робота, і ви відмовляєтеся від наміру обмежувати експлуатацію або модифікація твору як засобу примусового застосування, всупереч його користувачів, ваших або третіх осіб юридичних прав заборонити обхід технологічні заходи.
+
+4. Передача дослівних копій.
+Ви можете передавати дослівно копії вихідного коду Програми як ви Отримайте його у будь-якому форматі, за умови, що ви помітно та відповідно публікувати на кожній копії відповідне повідомлення про авторське право; Зберігайте всі повідомлення про те, що ця ліцензія та будь-які до кодексу застосовуються недозволні умови, додані відповідно до розділу 7; зберігати всі повідомлення про відсутність гарантії; і віддати все отримувачам копії цієї ліцензії разом із Програмою.
+
+Ви можете стягувати будь-яку ціну або взагалі не стягувати ціну за кожну копію, яку надаєте, І ви можете запропонувати підтримку або гарантійний захист за певну плату.
+
+5. Передача модифікованих вихідних версій.
+Ви можете написати роботу на основі Програми або змін виробляти його з Програми у формі вихідного коду під Умови розділу 4, за умови, що ви також відповідаєте всім цим умовам:
+
+a) Робота повинна містити помітні повідомлення про внесення змін IT, і вказую відповідну дату.
+b) Робота повинна містити помітні оголошення, що це випущено за цією ліцензією та будь-якими умовами, доданими у розділі 7. Ця вимога змінює вимогу в розділі 4 на "Зберігайте всі повідомлення цілими".
+c) Ви повинні ліцензувати всю роботу в цілому згідно з цим Ліцензія для будь-кого, хто отримає копію. Ось це Отже, буде застосовуватися ліцензія разом із будь-яким відповідним розділом 7 додаткові умови до всього твору та всіх його частин, незалежно від того, як вони упаковані. Ця ліцензія не дає дозволу ліцензувати роботу будь-яким іншим способом, але це не дає Анулюйте такий дозвіл, якщо ви отримали його окремо.
+d) Якщо робота має інтерактивний інтерфейс користувача, кожен повинен відображати відповідні юридичні повідомлення; однак, якщо Програма має інтерактивне інтерфейси, які не відображають відповідні юридичні повідомлення, ваш Робота не зобов'язана змушувати їх це робити.
+Збірка кавер-твору з іншими окремими та незалежними творами твори, які за своєю природою не є продовженнями покритого твору, і які не поєднуються з нею так, щоб утворити більшу програму, у або на об'ємі носія зберігання або розподілу називається "aggregate", якщо збірка та відповідне з нею авторське право не є використовується для обмеження доступу або юридичних прав користувачів збірки Поза межами того, що дозволяє окрема робота. Включення обкладеного твору у сукупності не призводить до застосування цієї ліцензії до іншого частини агрегату.
+
+6. Передача форм, що не є джерелом.
+Ви можете передати покритий твір у вигляді об'єктного коду відповідно до умов розділів 4 і 5, за умови, що ви також передаєте машиночитабельне відповідне джерело відповідно до умов цієї ліцензії, Одним із таких способів:
+
+a) Передавати код об'єкта у фізичному продукті або втілений у ньому (включно з фізичним середовищем розподілу), супроводжуваним Відповідне джерело, зафіксоване на міцному фізичному носії зазвичай використовується для обміну програмним забезпеченням.
+b) Передати код об'єкта у фізичному продукті або втілений у ньому (включно з фізичним середовищем розподілу), супроводжуваним Письмова пропозиція, дійсна щонайменше три роки і дійсна як Якщо ви надаєте запчастини або підтримку клієнтів для цього продукту моделю, щоб надати будь-кому, хто володіє кодом об'єкта, або (1) копія відповідного джерела для всього програмного забезпечення в продукт, який підпадає під дію цієї ліцензії, на міцному фізичному об'єкті Medium, який зазвичай використовується для обміну програмним забезпеченням, за ціну No Більше, ніж ваші розумні витрати на фізичне виконання цього передача джерела, або (2) доступ до копіювання Відповідне джерело з мережевого сервера безкоштовно.
+c) Передати окремі копії коду об'єкта разом із копією письмова пропозиція надати відповідне джерело. Ось це Альтернатива дозволена лише час від часу та не комерційно, і Тільки якщо ви отримали код об'єкта з такою пропозицією, відповідно до з підпунктом 6b.
+d) Передавати код об'єкта, надаючи доступ від визначеного розміщувати (безкоштовно або за плату) і пропонувати еквівалентний доступ до Відповідне джерело тим самим чином через те саме місце за жодним Додатковий заряд. Вам не потрібно вимагати від отримувачів копіювати Відповідне джерело разом із кодом об'єкта. Якщо місце для копіювання об'єктного коду є мережевим сервером, відповідним джерелом Може бути на іншому сервері (яким керують ви або третя сторона) який підтримує еквівалентні можливості копіювання, за умови, що ви підтримуєте чіткі вказівки поруч із кодом об'єкта, де знайти Відповідне джерело. Незалежно від того, який сервер хостить Відповідне джерело, ви залишаєтеся зобов'язаними переконатися, що це доступний стільки, скільки потрібно, щоб задовольнити ці вимоги.
+e) Передавати об'єктний код за допомогою peer-to-peer передачі, за умови ви повідомляєте іншим партнерам, де об'єктний код і відповідний Джерело робіт наразі пропонується широкій публіці Звинувачення за підпунктом 6d.
+Окрема частина об'єктного коду, вихідний код якої виключений з відповідного джерела як системна бібліотека не обов'язково Включено до передачі роботи з об'єктним кодом.
+
+«Користувацький продукт» — це або (1) «споживчий продукт», тобто будь-який матеріальне особисте майно, яке зазвичай використовується для особистого, сімейного, або побутові потреби, або (2) будь-що, що спроектовано або продано для інкорпорації у житло. При визначенні, чи є продукт споживчим продуктом, сумнівні випадки будуть вирішені на користь покриття. Для певного Продукт, отриманий певним користувачем, «зазвичай використовується» означає типове або поширене використання цього класу продуктів, незалежно від статусу конкретного користувача або способу, яким саме цей користувач фактично використовує, очікує або очікується використовувати продукт. Продукт є споживчим продуктом незалежно від того, чи має продукт суттєвий Комерційне, промислове або неспоживче використання, якщо таке не є єдиний значущий спосіб використання продукту.
+
+«Інформація про встановлення» для користувацького продукту означає будь-які методи, процедури, ключі авторизації або інша інформація, необхідна для встановлення та виконувати змінені версії покритого твору в цьому користувацькому продукті з модифікована версія відповідного джерела. Інформація має бути достатньо для забезпечення подальшої роботи модифікованого об'єкта Кодекс жодного разу не забороняється чи втручається лише через те, що внесено модифікацію.
+
+Якщо ви передаєте об'єктний код, працюйте за цим розділом у або з або з зокрема для використання в користувацькому продукті, а передача відбувається як частиною угоди, в якій право володіння та використання Користувацький продукт передається отримувачу назавжди або на фіксований термін (незалежно від того, як характеризується транзакція), Відповідне джерело, передане в цьому розділі, має супроводжуватися за інформацією про встановлення. Але ця вимога не застосовується якщо ні ви, ні третя сторона не зберігаєте можливість встановлення змінений об'єктний код на користувацькому продукті (наприклад, робота має був встановлений у ROM).
+
+Вимога надати інформацію про встановлення не включає Вимога продовжувати надання підтримки, гарантії або оновлень для роботи, яку було змінено або встановлено отримувачем, або для користувацький продукт, у якому він був змінений або встановлений. Доступ до мережа може бути відхилена, коли сама модифікація суттєво та негативно впливає на роботу мережі або порушує правила та протоколи для зв'язку через мережу.
+
+Відповідне джерело надано та надано інформацію про встановлення, відповідно до цього розділу має бути у форматі, який є публічним задокументовано (і з реалізацією, доступною для публіки у форма вихідного коду), і не повинна потребувати спеціального пароля чи ключа для розпаковування, читання або копіювання.
+
+7. Додаткові умови.
+«Додаткові дозволи» — це терміни, які доповнюють умови цього Ліцензія, роблячи винятки з однієї або кількох його умов. Додаткові дозволи, що застосовуються до всієї Програми, мають розглядатися так, ніби вони включені до цієї ліцензії, у тій мірі, що вони дійсні згідно з чинним законодавством. Якщо додаткові дозволи застосовуються лише до частини Програми, ця частина може використовуватися окремо за цими дозволами, але вся Програма залишається під керівництвом ця ліцензія без урахування додаткових дозволів.
+
+Коли ви передаєте копію захищеної роботи, ви можете за власним вибором видалити будь-які додаткові дозволи з цієї копії або з будь-якої частини Це. (Додаткові дозволи можуть бути написані, щоб вимагати власних Видалення в певних випадках при зміні роботи.) Ви можете розмістити додаткові дозволи на матеріали, додані вами до покритого твору, для яких ви маєте або можете надати відповідний дозвіл на авторські права.
+
+Незважаючи на будь-які інші положення цієї Ліцензії, для матеріалів ви додати до покритого твору, ви можете (якщо це дозволено власниками авторських прав ці матеріали) доповнюють умови цієї Ліцензії умовами:
+
+a) Відмова від гарантії або обмеження відповідальності інакше, ніж умови розділів 15 і 16 цієї ліцензії; або
+b) Вимога збереження визначених розумних юридичних повідомлень або авторські атрибуції у цьому матеріалі або у відповідному юридичному документі Оголошення, розміщені на роботах, що його містять; або
+c) Заборону неправдивого представлення походження цього матеріалу, або вимагає, щоб модифіковані версії такого матеріалу були позначені у розумні способи, відмінні від оригінальної версії; або
+d) Обмеження використання імена ліцензіарів з метою публічності або автори матеріалу; або
+e) Відмова у наданні прав за законом про торговельні марки на використання деяких торговельні назви, торгові марки або сервісні знаки; або
+f) Вимога відшкодування ліцензіарам і авторам цього матеріал від будь-кого, хто передає матеріал (або змінює його версії) з договірними припущеннями відповідальності перед отримувачем Будь-яка відповідальність, яку ці договірні припущення безпосередньо накладають на Ці ліцензіарі та автори.
+Всі інші додаткові умови, які не дозволяють, вважаються «далі» обмеження» у розумінні розділу 10. Якщо програма, як ви отримав його, або будь-яка його частина, містить повідомлення, що це регулюється цією ліцензією разом із умовою, яка є додатковою обмеження, ви можете прибрати цей термін. Якщо ліцензійний документ містить додаткове обмеження, але дозволяє повторне ліцензування або передачу відповідно до цього Ліцензію, ви можете додати до покриття робочого матеріалу, що регулюється умовами цього ліцензійного документа, за умови, що подальше обмеження має не пережив таке повторне ліцензування чи передачу.
+
+Якщо ви додаєте терміни до охопленого твору відповідно до цього розділу, ви повинен розмістити у відповідних вихідних файлах заяву про Додаткові умови, що застосовуються до цих файлів, або повідомлення про це Де знайти відповідні умови.
+
+Додаткові умови, дозволені або недозволяльні, можуть бути зазначені у форма окремо письмової ліцензії, або зазначена як винятки; Вищезазначені вимоги застосовуються в будь-якому випадку.
+
+8. Знищення.
+Ви не можете розповсюджувати або змінювати покритий твір, окрім випадків прямо надається за цією ліцензією. Будь-яка спроба інакше поширити або Модифікація є недійсною і автоматично припиняє ваші права за ця Ліцензія (включно з будь-якими патентними ліцензіями, виданими згідно з третьою пункт розділу 11).
+
+Однак, якщо ви припините всі порушення цієї ліцензії, то ваш ліцензія від певного правовласника відновлюється (a) тимчасово, якщо і до того часу, поки правовласник явно не визначить, і нарешті припиняє вашу ліцензію, і (b) назавжди, якщо авторське право Власник не повідомив вас про порушення певними розумними способами до 60 днів після припинення прийому.
+
+Крім того, ваша ліцензія від певного правовласника є Відновлюється назавжди, якщо правовласник повідомить вас про порушення розумними способами, це перший раз, коли ви отримано повідомлення про порушення цієї ліцензії (для будь-яких робіт) від цього правовласника, і ви виправляєте порушення раніше ніж через 30 днів після цього Ваше отримання повідомлення.
+
+Припинення ваших прав за цим розділом не припиняє ліцензії сторін, які отримали копії або права від вас згідно з Ця ліцензія. Якщо ваші права були припинені і не назавжди Після відновлення ви не маєте права на отримання нових ліцензій на те саме Матеріали за статтею 10.
+
+9. Прийняття не потрібне для наявності копій.
+Ви не зобов'язані приймати цю ліцензію, щоб отримати або запустити копію Програми. Допоміжне поширення покритого твору що виникає виключно внаслідок використання peer-to-peer передачі Отримання копії також не вимагає прийняття. Однак, нічого, крім цієї ліцензії, не дає вам дозволу поширювати або Модифікуйте будь-яку охоплену роботу. Ці дії порушують авторські права, якщо ви це зробите не приймаю цю ліцензію. Отже, модифікуючи або поширюючи Ви вказуєте на прийняття цієї ліцензії для цього.
+
+10. Автоматичне ліцензування отримувачів нижче по мережі.
+Кожного разу, коли ви передаєте захищену роботу, отримувач автоматично отримує ліцензію від оригінальних ліцензіарів на запуск, модифікацію та поширювати цей твір за умови цієї ліцензії. Ви не несете відповідальності для забезпечення дотримання третіми сторонами цієї ліцензії.
+
+«Транзакція з суб'єктом» — це транзакція, що передає контроль над організація, або практично всі активи однієї компанії, або поділ організація або об'єднання організацій. Якщо поширення покритого робота виникає внаслідок угоди з суб'єктом, кожна сторона якої бере участь транзакція, яка отримує копію твору, також отримує будь-які ліцензії на роботу, яку мав або міг мати або міг попередник партії наведіть згідно з попереднім пунктом, плюс право на володіння Відповідне джерело роботи від попередника, якщо Попередник має його або може отримати з розумними зусиллями.
+
+Ви не можете накладати додаткові обмеження на здійснення права, надані або підтверджені за цією ліцензією. Наприклад, ви можете не стягувати ліцензійний збір, роялті чи інші витрати за здійснення права, надані за цією ліцензією, і ви не можете ініціювати судові процеси (включно з перехресним позовом або зустрічним позовом у позові), стверджуючи, що Будь-яка патентна претензія порушується шляхом створення, використання, продажу, пропозиції продаж або імпорт Програми чи будь-якої її частини.
+
+11. Патенти.
+«Дописувач» — це правовласник, який дозволяє використання відповідно до цього Ліцензія Програми або роботи, на якій базується Програма. The Робота, ліцензована таким чином, називається «версією автора».
+
+«Основні патентні претензії» учасника — це всі патентні претензії належить або контролюється автором, незалежно від того, чи він уже придбаний або надалі набуття, це буде порушено якимось способом, дозволене за цією Ліцензією на створення, використання або продаж своєї версії для учасників, але не включайте претензії, які будуть порушені лише як наслідок подальшої модифікації версії учасника. Для Цілі цього визначення, «контроль» включає право надавати патентні субліцензії відповідно до вимог Ця ліцензія.
+
+Кожен учасник надає вам неексклюзивну, глобальну, без роялті патентну ліцензію відповідно до суттєвих патентних претензій автора, до створювати, використовувати, продавати, пропонувати для продажу, імпортувати та іншим чином керувати, модифікувати та поширювати вміст своєї версії-учасника.
+
+У наступних трьох абзацах «патентна ліцензія» — це будь-яка пряма угоди чи зобов'язання, незалежно від номінації, не застосовувати патент (наприклад, прямий дозвіл на здійснення патенту або зобов'язання не робити подайте позов за порушення патенту). Щоб «надати» таку патентну ліцензію Сторона означає укласти таку угоду або зобов'язання не виконувати патенту проти сторони.
+
+Якщо ви передаєте захищений твір, свідомо покладаючись на патентну ліцензію, а відповідне джерело твору недоступне нікому копіювати безкоштовно та на умовах цієї Ліцензії через публічно доступний мережевий сервер або інший легкодоступний засіб, тоді ви повинні або (1) змусити відповідне джерело бути таким доступні, або (2) домовитися про позбавлення себе переваг патентна ліцензія на цю конкретну роботу, або (3) організувати певним способом відповідно до вимог цієї ліцензії для розширення патенту Ліцензія для отримувачів нижче по потоку. "Свідомо покладаєшся" означає, що ти маєш Фактичне знання, що, окрім патентної ліцензії, ви передаєте Покрита робота в країні або використання опікувачем цієї роботи у країні це порушує один або кілька ідентифікованих патентів у цій країні, в якій ви маєте підстави вважати дійсними.
+
+Якщо, відповідно до або у зв'язку з однією угодою, або Ви передаєте або поширюєте шляхом отримання передачі покрити роботу та надати патентну ліцензію деяким сторонам отримання покритої роботи, що дозволяє їм використовувати, поширювати, модифікувати або передати конкретну копію обробленого твору, а потім патентну ліцензію Ваш грант автоматично поширюється на всіх отримувачів покритих працювати на основі неї.
+
+Патентна ліцензія є «дискримінаційною», якщо вона не включає Обсяг його покриття забороняє здійснення або є умовлені нереалізацією одного або кількох прав, які є спеціально надано за цією ліцензією. Ви не можете передати покриття Працюйте, якщо ви є стороною угоди з третьою стороною, яка є у бізнесі розповсюдження програмного забезпечення, за яким ви здійснюєте оплату третій стороні на основі обсягу вашої діяльності з передачі роботи, за якою третя сторона надає, будь-якому з Сторони, які отримають покриту роботу від вас, є дискримінаційним Патентна ліцензія (a) у зв'язку з копіями охопленого твору передані вами (або копії, зроблені з цих копій), або (б) переважно для та у зв'язку з конкретними продуктами або компіляціями, які Містить покриту роботу, якщо ви не уклали таку угоду, або що патентна ліцензія була видана до 28 березня 2007 року.
+
+Нічого в цій Ліцензії не слід тлумачити як виключення або обмежування будь-які імпліцитні ліцензії або інші захисти від порушення, які можуть інакше вони будуть доступні для вас відповідно до відповідного патентного законодавства.
+
+12. Не відмовлятися від чужої свободи.
+Якщо вам накладають умови (чи то за рішенням суду, угодою, чи інакше), які суперечать умовам цієї ліцензії, вони не відповідають вибачте вас за умови цієї ліцензії. Якщо ви не можете передати Покрита робота, щоб одночасно виконувати свої зобов'язання за цим Ліцензія та інші відповідні зобов'язання, тоді, відповідно, ви можете Взагалі не передати її. Наприклад, якщо ви погоджуєтеся на умови, які вас зобов'язують збирати роялті для подальшої передачі від тих, кому ви передаєте Програму — єдиний спосіб, яким ви могли б задовольнити обидва ці умови і це. Ліцензія полягає в повному утриманні від поширення Програми.
+
+13. Використання з загальною публічною ліцензією GNU Affero.
+Незважаючи на будь-які інші положення цієї ліцензії, ви маєте Дозвіл на посилання або поєднання будь-яких покритих творів із ліцензованим твором за версією 3 загальної публічної ліцензії GNU Affero у один поєднувати роботу та передавати отриману роботу. Умови цього Ліцензія й надалі застосовуватиметься до тієї частини, що є охопленою роботою, але особливі вимоги до загальної публічної ліцензії GNU Affero, Розділ 13, що стосується взаємодії через мережу, застосовуватиметься до Комбінація як така.
+
+14. Переглянуті версії цієї ліцензії.
+Фонд вільного програмного забезпечення може публікувати переглянуті та/або нові версії час від часу GNU General Public License. Такі нові версії бути подібними за духом до поточної версії, але можуть відрізнятися деталями від Вирішуйте нові проблеми чи занепокоєння.
+
+Кожна версія отримує відмінний номер версії. Якщо Програма визначає, що певна нумерована версія GNU General Публічна ліцензія «або будь-яка пізніша версія» застосовується до неї, у вас є опція дотримання умов будь-якого з цих пронумерованих версії або будь-якої пізнішої версії, опублікованої Вільним програмним забезпеченням Фонд. Якщо Програма не вказує номер версії GNU General Public License, ви можете обрати будь-яку версію, коли-небудь опубліковану від Фонду вільного програмного забезпечення.
+
+Якщо Програма вказує, що проксі може вирішувати, яке майбутнє версії GNU General Public License можуть використовуватися, ці проксі-проксі. Публічна заява про прийняття версії назавжди дозволяє вам щоб обрати цю версію для Програми.
+
+Пізніші версії ліцензії можуть надати додаткові або інші варіанти Дозволи. Однак жодних додаткових зобов'язань на жодного Автор або правовласник у результаті вашого вибору дотримуватися пізніша версія.
+
+15. Відмова від гарантії.
+НА ПРОГРАМУ НЕМАЄ ГАРАНТІЇ В МЕЖАХ, ДОЗВОЛЕНИХ ЗАСТОСОВНЕ ПРАВО. ЗА ВИНЯТКОМ ВИПАДКІВ, КОЛИ АВТОРСЬКЕ ПРАВО ПИСЬМОВО ЗАЗНАЧЕНО ІНШЕ ВЛАСНИКИ ТА/АБО ІНШІ СТОРОНИ НАДАЮТЬ ПРОГРАМУ «ЯК Є» БЕЗ ГАРАНТІЇ БУДЬ-ЯКОГО ВИДУ, ЯВНОГО ЧИ НЕЯВНОГО, ВКЛЮЧАЮЧИ, АЛЕ НЕ ОБМЕЖУЮЧИСЬ, ІМПЛІЦИТНІ ГАРАНТІЇ КОМЕРЦІЙНОЇ ПРИДАТНОСТІ ТА ПРИДАТНОСТІ ДЛЯ ПЕВНОГО МЕТА. ВЕСЬ РИЗИК ЩОДО ЯКОСТІ ТА ЕФЕКТИВНОСТІ ПРОГРАМИ З ТОБОЮ. ЯКЩО ПРОГРАМА ВИЯВИТЬСЯ ДЕФЕКТНОЮ, ВИ БЕРЕТЕ НА СЕБЕ ВАРТІСТЬ УСІ НЕОБХІДНІ ПОСЛУГИ, РЕМОНТ АБО КОРЕКЦІЯ.
+
+16. Обмеження відповідальності.
+НІ В ЯКОМУ РАЗІ, ЯКЩО ЦЕ НЕ ПЕРЕДБАЧЕНО ЧИННИМ ЗАКОНОМ АБО НЕ ПОГОДЖЕНО ПИСЬМОВО ЧИ БУДЕ БУДЬ-ЯКИЙ ВЛАСНИК АВТОРСЬКИХ ПРАВ АБО ІНША СТОРОНА, ЯКА ЗМІНЮЄ ТА/АБО ПЕРЕДАЄ ПРОГРАМА, ЯК ДОЗВОЛЕНО ВИЩЕ, НЕСЕ ВІДПОВІДАЛЬНІСТЬ ПЕРЕД ВАМИ ЗА ЗБИТКИ, ВКЛЮЧНО З БУДЬ-ЯКИМИ ЗАГАЛЬНІ, СПЕЦІАЛЬНІ, ВИПАДКОВІ АБО НАСЛІДКОВІ ЗБИТКИ, ЩО ВИНИКЛИ ВНАСЛІДОК ВИКОРИСТАННЯ АБО НЕМОЖЛИВІСТЬ КОРИСТУВАТИСЯ ПРОГРАМОЮ (ВКЛЮЧНО, АЛЕ НЕ ОБМЕЖУЮЧИСЬ, ВТРАТОЮ ДАНІ АБО ДАНІ СТАЮТЬ НЕТОЧНИМИ АБО ЗБИТКИ ЗАЗНАЮТЬ ВИ АБО ТРЕТЯ СТОРОНА СТОРОНИ АБО НЕВДАЧА ПРОГРАМИ ПРАЦЮВАТИ З ІНШИМИ ПРОГРАМАМИ), НАВІТЬ ЯКЩО ТАКИЙ ВЛАСНИК АБО ІНША СТОРОНА БУЛА ПОІНФОРМОВАНА ПРО МОЖЛИВІСТЬ ТАКІ ПОШКОДЖЕННЯ.
+
+17. Тлумачення розділів 15 і 16.
+Якщо відмова від гарантії та обмеження відповідальності надано вищезазначене не може надати місцевої правової сили відповідно до їхніх умов, Суди, що переглядають, повинні застосовувати місцеве законодавство, яке найбільше наближається абсолютне відмовлення від усієї цивільної відповідальності у зв'язку з Програма, якщо гарантія або прийняття відповідальності не супроводжується копія Програми в обмін на плату.
+
+КІНЕЦЬ УМОВ
+
+Як застосувати ці терміни до ваших нових програм
+Якщо ви розробляєте нову програму і хочете, щоб вона була найкращою Можливе використання для громадськості, найкращий спосіб досягти цього — зробити це Вільне програмне забезпечення, яке кожен може розповсюджувати та змінювати на цих умовах.
+
+Для цього додайте до програми такі повідомлення. Це найбезпечніше щоб прикріпити їх до початку кожного вихідного файлу для найефективнішого вказати виключення гарантії; і кожен файл повинен мати принаймні рядок «авторське право» та вказівник, де знаходиться повне повідомлення.
 
     <one line to give the program's name and a brief idea of what it does.>
     Copyright (C) <year>  <name of author>
@@ -646,29 +201,16 @@ the "copyright" line and a pointer to where the full notice is found.
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+Також додайте інформацію про те, як зв'язатися з вами електронною та паперовою поштою.
 
-Also add information on how to contact you by electronic and paper mail.
-
-  If the program does terminal interaction, make it output a short
-notice like this when it starts in an interactive mode:
+Якщо програма взаємодіє з терміналами, зробіть її виводом короткого замикання Зверніть увагу на таке, коли він починається в інтерактивному режимі:
 
     <program>  Copyright (C) <year>  <name of author>
     This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
     This is free software, and you are welcome to redistribute it
     under certain conditions; type `show c' for details.
+Гіпотетичні команди «показати w» та «показати c» мають показувати відповідні частини загальної публічної ліцензії. Звісно, команди твоєї програми може бути інакше; для інтерфейсу графічного інтерфейсу ви використовуєте поле «про себе».
 
-The hypothetical commands `show w' and `show c' should show the appropriate
-parts of the General Public License.  Of course, your program's commands
-might be different; for a GUI interface, you would use an "about box".
+Вам також слід звернутися до роботодавця (якщо ви працюєте програмістом) або до школи, якщо є, підписати «відмову від авторських прав» на програму, якщо потрібно. Для отримання додаткової інформації про це, а також про те, як подати заявку та дотримуватися GNU GPL, дивіться <https://www.gnu.org/licenses/>.
 
-  You should also get your employer (if you work as a programmer) or school,
-if any, to sign a "copyright disclaimer" for the program, if necessary.
-For more information on this, and how to apply and follow the GNU GPL, see
-<https://www.gnu.org/licenses/>.
-
-  The GNU General Public License does not permit incorporating your program
-into proprietary programs.  If your program is a subroutine library, you
-may consider it more useful to permit linking proprietary applications with
-the library.  If this is what you want to do, use the GNU Lesser General
-Public License instead of this License.  But first, please read
-<https://www.gnu.org/licenses/why-not-lgpl.html>.
+Загальна публічна ліцензія GNU не дозволяє інкорпорувати вашу програму у власні програми. Якщо ваша програма є бібліотекою підпрограм, то ви можливо, вважаю більш корисним дозволити пов'язувати власні додатки з Бібліотека. Якщо це те, що ви хочете зробити, використовуйте GNU Lesser General Публічна ліцензія замість цієї ліцензії. Але спочатку, будь ласка, прочитайте <https://www.gnu.org/licenses/why-not-lgpl.html>.
