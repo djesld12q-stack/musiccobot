@@ -414,36 +414,54 @@
   let lastUpdate = 0;
   let updateCheckInterval = null;
 
+  function log(msg) {
+    console.log('[OBS Overlay] ' + msg);
+  }
+
   function checkForSongUpdate() {
     try {
       const stored = localStorage.getItem('ytm_now_playing');
-      if (!stored) return;
+      if (!stored) {
+        // log('No localStorage data yet');
+        return;
+      }
       
       const data = JSON.parse(stored);
       const now = Date.now();
       
-      // Only process if data was updated recently (within last 2 seconds)
-      if (data.ts && (now - data.ts) < 2000) {
+      log('Data from localStorage: ' + JSON.stringify(data));
+      
+      // Only process if data was updated recently (within last 3 seconds)
+      if (data.ts && (now - data.ts) < 3000) {
         if (data.ts === lastUpdate) return; // No update
         lastUpdate = data.ts;
         
+        log('Processing: ' + data.type);
+        
         if (data.type === 'NOW_PLAYING') {
           if (data.stopped || !data.id) {
+            log('Hiding song (stopped)');
             hideSong();
           } else {
+            log('Showing song: ' + data.title);
             showSong(data);
           }
         }
         else if (data.type === 'NOW_PAUSED') {
-          if (card.classList.contains('visible')) setPausedState(true);
+          if (card.classList.contains('visible')) {
+            log('Setting paused state');
+            setPausedState(true);
+          }
         }
         else if (data.type === 'NOW_RESUMED') {
           if (card.classList.contains('visible')) {
             if (data.elapsed !== undefined) elapsed = data.elapsed;
+            log('Setting resumed state');
             setPausedState(false);
           }
         }
         else if (data.type === 'NOW_STOPPED') {
+          log('Hiding song (stopped)');
           hideSong();
         }
         else if (data.type === 'NOW_SYNC') {
@@ -451,13 +469,98 @@
         }
       }
     } catch (err) {
-      console.error('Error reading localStorage:', err);
+      console.error('[OBS Overlay] Error reading localStorage:', err);
     }
   }
 
   // Start checking localStorage for updates
+  log('Starting overlay... checking localStorage every 200ms');
   setStatus('connected', 'Підключено · очікування пісні...');
   updateCheckInterval = setInterval(checkForSongUpdate, 200); // Check every 200ms
+  
+  // Also check immediately on load
+  setTimeout(checkForSongUpdate, 500);
+
+  // ── WebSocket Fallback (якщо localStorage не працює) ──────────────────────
+  let ws = null;
+  let wsReconnectTimeout = null;
+
+  function connectWebsocket() {
+    log('Attempting WebSocket connection to localhost:' + WS_PORT);
+    try {
+      ws = new WebSocket('ws://localhost:' + WS_PORT + '/');
+
+      ws.onopen = () => {
+        log('WebSocket connected!');
+        setStatus('connected', 'Підключено (WebSocket)');
+        ws.send(JSON.stringify({ request: 'Subscribe', events: { General: ['Custom'] }, id: 'Sub' }));
+      };
+
+      ws.onmessage = (e) => {
+        const rawData = e.data.toString();
+        if (rawData.includes('"request":"Hello"') || rawData.includes('"id":"Sub"')) return;
+
+        try {
+          let inner = null;
+          const raw = JSON.parse(rawData);
+
+          if (raw.data && typeof raw.data === 'object' && raw.data.data) {
+            inner = JSON.parse(raw.data.data);
+          } else if (raw.type) {
+            inner = raw;
+          }
+          if (!inner) return;
+
+          log('WebSocket event: ' + inner.type);
+
+          if (inner.type === 'NOW_PLAYING' || (!inner.type && inner.id)) {
+            if (inner.stopped || !inner.id) {
+              hideSong();
+            } else {
+              showSong(inner);
+            }
+          }
+          else if (inner.type === 'NOW_PAUSED') {
+            if (card.classList.contains('visible')) setPausedState(true);
+          }
+          else if (inner.type === 'NOW_RESUMED') {
+            if (card.classList.contains('visible')) {
+              if (inner.elapsed !== undefined) elapsed = inner.elapsed;
+              setPausedState(false);
+            }
+          }
+          else if (inner.type === 'NOW_STOPPED') {
+            hideSong();
+          }
+          else if (inner.type === 'NOW_SYNC') {
+            syncSong(inner);
+          }
+        } catch (err) {
+          log('Error parsing WebSocket message: ' + err.message);
+        }
+      };
+
+      ws.onerror = (e) => {
+        log('WebSocket error: ' + e);
+      };
+
+      ws.onclose = () => {
+        log('WebSocket closed, retrying in 5s...');
+        wsReconnectTimeout = setTimeout(connectWebsocket, 5000);
+      };
+    } catch (err) {
+      log('WebSocket connection failed: ' + err.message);
+    }
+  }
+
+  // Try WebSocket after a delay (in case localStorage works)
+  setTimeout(() => {
+    const stored = localStorage.getItem('ytm_now_playing');
+    if (!stored) {
+      log('No localStorage data found, trying WebSocket...');
+      connectWebsocket();
+    }
+  }, 2000);
 </script>
 </body>
 </html>

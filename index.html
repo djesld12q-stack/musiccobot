@@ -1503,6 +1503,10 @@
                     ts: Date.now()
                 };
                 localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                // Also send via WebSocket
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PLAYING", data: payload, id: "NowPlaying" }));
+                }
                 // Start periodic sync every 500ms
                 syncInterval = setInterval(() => {
                     if (currentSongInfo && player && player.getPlayerState() !== 5) {
@@ -1520,11 +1524,19 @@
                             ts: Date.now()
                         };
                         localStorage.setItem('ytm_now_playing', JSON.stringify(syncPayload));
+                        // Also send via WebSocket
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_SYNC", data: syncPayload, id: "SongSync" }));
+                        }
                     }
                 }, 500);
             } else {
                 const payload = { type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() };
                 localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                // Also send via WebSocket
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
+                }
             }
         }
 
@@ -1589,6 +1601,9 @@
                         ts: Date.now()
                     };
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
+                    }
                 }
             }
             else if (e.data === 2) {
@@ -1607,6 +1622,9 @@
                         ts: Date.now()
                     };
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PAUSED", data: payload, id: "SongPaused" }));
+                    }
                 }
             }
         }
@@ -1628,7 +1646,11 @@
         function stopSongUI() { 
             player.stopVideo();
             document.getElementById('now-playing-title').innerText = "STOP";
-            localStorage.setItem('ytm_now_playing', JSON.stringify({ type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() }));
+            const payload = { type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() };
+            localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
+            }
         }
 
         function playFromChat(user) {
