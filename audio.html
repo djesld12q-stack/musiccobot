@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Bridge for OBS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0a0a0a; 
+            font-family: 'Segoe UI', sans-serif; 
+            color: #0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            background: #111;
+            border: 2px solid #0f0;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        h1 { font-size: 1.5em; margin-bottom: 10px; }
+        .status {
+            font-size: 3em;
+            margin: 20px 0;
+        }
+        .status.connected { color: #0f0; }
+        .status.error { color: #f00; }
+        .info {
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        .audio-level {
+            margin-top: 30px;
+            display: flex;
+            gap: 4px;
+            align-items: flex-end;
+            justify-content: center;
+            height: 60px;
+        }
+        .bar {
+            width: 6px;
+            background: #0f0;
+            border-radius: 2px;
+            flex-grow: 1;
+            max-height: 100%;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+        }
+        .ws-status {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            border-radius: 6px;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎵 Audio Bridge</h1>
+    <div class="status connected" id="status">🎧</div>
+    <p style="font-weight: bold;">Захоплення звука для OBS</p>
+    
+    <div class="audio-level" id="audioLevel">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </div>
+    
+    <div class="ws-status">
+        <div>WebSocket: <span id="wsStatus">Підключається...</span></div>
+        <div>Вихід: <span id="audioStatus">Готово</span></div>
+    </div>
+
+    <div class="info">
+        <p>✅ Використовуй це вікно як Browser Source в OBS</p>
+        <p style="margin-top: 10px; font-size: 0.8em; color: #666;">
+            OBS → Sources → Browser → audio.html
+        </p>
+    </div>
+</div>
+
+<!-- Hidden audio element for capturing system audio -->
+<audio id="audioCapture" style="display:none;"></audio>
+
+<script>
+    const statusEl = document.getElementById('status');
+    const wsStatusEl = document.getElementById('wsStatus');
+    const audioStatusEl = document.getElementById('audioStatus');
+    const audioCapture = document.getElementById('audioCapture');
+    const bars = document.querySelectorAll('.bar');
+    
+    let audioContext;
+    let analyser;
+    let dataArray;
+    let animationId;
+    let ws = null;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Initialize Web Audio API for sound visualization
+    // ═══════════════════════════════════════════════════════════════════
+    function initAudio() {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            
+            // Connect system audio to analyser
+            try {
+                const destination = audioContext.createMediaStreamDestination();
+                analyser.connect(audioContext.destination);
+                log('✅ Web Audio API initialized');
+            } catch (e) {
+                log('⚠️ Audio routing: ' + e.message);
+            }
+            
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            
+            animate();
+            return true;
+        } catch (e) {
+            log('❌ Audio context error: ' + e.message);
+            return false;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Visualize audio levels
+    // ═══════════════════════════════════════════════════════════════════
+    function animate() {
+        animationId = requestAnimationFrame(animate);
+        
+        try {
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Update bar visualization
+            const avgFrequency = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            const normalized = Math.min(100, avgFrequency / 2.56);
+            
+            bars.forEach((bar, index) => {
+                const value = dataArray[index * (dataArray.length / bars.length)];
+                const height = (value / 255) * 100;
+                bar.style.height = Math.max(10, height) + '%';
+            });
+            
+            // Update status
+            if (avgFrequency > 10) {
+                statusEl.textContent = '🎵';
+                audioStatusEl.textContent = '🟢 LIVE (' + Math.round(normalized) + '%)';
+            } else {
+                statusEl.textContent = '🎧';
+                audioStatusEl.textContent = '⚪ READY';
+            }
+        } catch (e) {
+            // Silent fail for analyser
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // WebSocket connection to StreamerBot for metadata
+    // ═══════════════════════════════════════════════════════════════════
+    function connectWebSocket() {
+        const WS_HOST = new URLSearchParams(window.location.search).get('ws_host') || '127.0.0.1';
+        const WS_PORT = new URLSearchParams(window.location.search).get('ws_port') || '8080';
+        
+        try {
+            ws = new WebSocket('ws://' + WS_HOST + ':' + WS_PORT + '/');
+            
+            ws.onopen = () => {
+                wsStatusEl.textContent = '🟢 CONNECTED';
+                log('✅ WebSocket connected');
+                ws.send(JSON.stringify({ 
+                    request: 'Subscribe', 
+                    events: { General: ['Custom'] }, 
+                    id: 'AudioBridge' 
+                }));
+            };
+            
+            ws.onmessage = (e) => {
+                const data = e.data.toString();
+                if (!data.includes('Hello') && !data.includes('Sub')) {
+                    log('📨 Event: ' + data.substring(0, 100));
+                }
+            };
+            
+            ws.onerror = () => {
+                wsStatusEl.textContent = '🔴 ERROR';
+            };
+            
+            ws.onclose = () => {
+                wsStatusEl.textContent = '⚪ RECONNECT...';
+                setTimeout(connectWebSocket, 3000);
+            };
+        } catch (err) {
+            log('❌ WebSocket error: ' + err.message);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Logging
+    // ═══════════════════════════════════════════════════════════════════
+    function log(msg) {
+        console.log('[Audio Bridge] ' + msg);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Initialize on load
+    // ═══════════════════════════════════════════════════════════════════
+    window.addEventListener('load', () => {
+        log('🎵 Audio Bridge starting...');
+        
+        if (initAudio()) {
+            statusEl.classList.add('connected');
+            connectWebSocket();
+            log('✅ Ready for OBS capture');
+        } else {
+            statusEl.classList.add('error');
+            statusEl.textContent = '❌';
+        }
+    });
+
+    // Resume audio context on user interaction
+    document.addEventListener('click', () => {
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+            log('▶️ Audio context resumed');
+        }
+    });
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+        if (animationId) cancelAnimationFrame(animationId);
+        if (ws) ws.close();
+        if (audioContext) audioContext.close();
+    });
+</script>
+
+</body>
+</html>
