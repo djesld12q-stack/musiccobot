@@ -388,7 +388,12 @@
     // Resync elapsed time
     elapsed  = data.elapsed || 0;
     duration = data.duration || duration;
-    if (!isPaused) startTs = Date.now();
+    isPaused = !!data.paused;
+    if (!isPaused) {
+      startTs = Date.now();
+    } else {
+      startTs = null;
+    }
     tick();
   }
 

@@ -1483,18 +1483,75 @@
             renderQueue(); playNext();
         }
 
+        let syncInterval = null;
+
+        function broadcastSongState() {
+            if (!currentSongInfo || !player || player.getPlayerState() === 5) return;
+            const elapsed = player.getCurrentTime() || 0;
+            const paused = player.getPlayerState() === 2;
+            const payload = {
+                type: paused ? 'NOW_PAUSED' : 'NOW_PLAYING',
+                id: currentSongInfo.id,
+                title: currentSongInfo.title,
+                author: currentSongInfo.author,
+                user: currentSongInfo.user,
+                duration: currentSongInfo.duration || 0,
+                elapsed: Math.round(elapsed),
+                paused: paused,
+                ts: Date.now()
+            };
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ request: "BroadcastEvent", name: payload.type, data: payload, id: "SongState" }));
+            }
+        }
+
         function updateNowPlayingOverlay(songInfo) {
+            // Stop existing sync
+            if (syncInterval) clearInterval(syncInterval);
+            
             if (songInfo) {
-                const payload = { id: songInfo.id, title: songInfo.title, author: songInfo.author, user: songInfo.user, duration: songInfo.duration || 0, stopped: false, ts: Date.now() };
+                const payload = {
+                    type: 'NOW_PLAYING',
+                    id: songInfo.id,
+                    title: songInfo.title,
+                    author: songInfo.author,
+                    user: songInfo.user,
+                    duration: songInfo.duration || 0,
+                    elapsed: 0,
+                    paused: false,
+                    stopped: false,
+                    ts: Date.now()
+                };
                 localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PLAYING", data: payload, id: "NowPlaying" }));
                 }
+                // Start periodic sync every 1 second
+                syncInterval = setInterval(() => {
+                    if (currentSongInfo && player && player.getPlayerState() !== 5) {
+                        const elapsed = Math.round(player.getCurrentTime() || 0);
+                        const paused = player.getPlayerState() === 2;
+                        const syncPayload = {
+                            type: 'NOW_SYNC',
+                            id: currentSongInfo.id,
+                            title: currentSongInfo.title,
+                            author: currentSongInfo.author,
+                            user: currentSongInfo.user,
+                            duration: currentSongInfo.duration || 0,
+                            elapsed: elapsed,
+                            paused: paused,
+                            ts: Date.now()
+                        };
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_SYNC", data: syncPayload, id: "SongSync" }));
+                        }
+                    }
+                }, 1000);
             } else {
-                const payload = { id: null, stopped: true, ts: Date.now() };
+                const payload = { type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() };
                 localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                 if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PLAYING", data: payload, id: "NowPlaying" }));
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
                 }
             }
         }
@@ -1536,10 +1593,53 @@
         }
 
         function onPlayerStateChange(e) {
-            if (e.data === 0) playNext(); 
-            if (e.data === 1) {           
+            // 0 = ENDED, 1 = PLAYING, 2 = PAUSED, 5 = CUED
+            if (e.data === 0) {
+                // Song ended
+                playNext();
+            }
+            else if (e.data === 1) {
+                // Playing
                 document.getElementById('now-playing-title').innerText = currentSongInfo.title;
                 document.getElementById('now-playing-meta').innerText = currentSongInfo.user === "Auto" ? `Auto` : `👤 ${currentSongInfo.user}`;
+                // Send RESUMED event
+                if (currentSongInfo) {
+                    const elapsed = Math.round(player.getCurrentTime() || 0);
+                    const payload = {
+                        type: 'NOW_RESUMED',
+                        id: currentSongInfo.id,
+                        title: currentSongInfo.title,
+                        author: currentSongInfo.author,
+                        user: currentSongInfo.user,
+                        duration: currentSongInfo.duration || 0,
+                        elapsed: elapsed,
+                        paused: false,
+                        ts: Date.now()
+                    };
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
+                    }
+                }
+            }
+            else if (e.data === 2) {
+                // Paused
+                if (currentSongInfo) {
+                    const elapsed = Math.round(player.getCurrentTime() || 0);
+                    const payload = {
+                        type: 'NOW_PAUSED',
+                        id: currentSongInfo.id,
+                        title: currentSongInfo.title,
+                        author: currentSongInfo.author,
+                        user: currentSongInfo.user,
+                        duration: currentSongInfo.duration || 0,
+                        elapsed: elapsed,
+                        paused: true,
+                        ts: Date.now()
+                    };
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PAUSED", data: payload, id: "SongPaused" }));
+                    }
+                }
             }
         }
 
@@ -1551,12 +1651,40 @@
                 else { playNext(); }
                 return;
             }
-            if(player.getPlayerState() === 1) { player.pauseVideo(); } 
+            if(player.getPlayerState() === 1) {
+                player.pauseVideo();
+                // Send PAUSED event immediately
+                const elapsed = Math.round(player.getCurrentTime() || 0);
+                const payload = {
+                    type: 'NOW_PAUSED',
+                    id: currentSongInfo.id,
+                    title: currentSongInfo.title,
+                    author: currentSongInfo.author,
+                    user: currentSongInfo.user,
+                    duration: currentSongInfo.duration || 0,
+                    elapsed: elapsed,
+                    paused: true,
+                    ts: Date.now()
+                };
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PAUSED", data: payload, id: "SongPaused" }));
+                }
+            }
             else { player.playVideo(); }
         }
         
         function stopSongUI() { 
-            player.stopVideo(); 
+            player.stopVideo();
+            // Send STOPPED event
+            const payload = {
+                type: 'NOW_STOPPED',
+                id: null,
+                stopped: true,
+                ts: Date.now()
+            };
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
+            }
             document.getElementById('now-playing-title').innerText = "STOP"; 
         }
 
@@ -1568,18 +1696,66 @@
                 } else { sendChatMessage(t('msg_queue_play', {user: user})); playNext(); }
                 return;
             }
-            if (player.getPlayerState() !== 1) { player.playVideo(); sendChatMessage(t('msg_resumed', {user: user})); }
+            if (player.getPlayerState() !== 1) {
+                player.playVideo();
+                // Send RESUMED event
+                const elapsed = Math.round(player.getCurrentTime() || 0);
+                const payload = {
+                    type: 'NOW_RESUMED',
+                    id: currentSongInfo.id,
+                    title: currentSongInfo.title,
+                    author: currentSongInfo.author,
+                    user: currentSongInfo.user,
+                    duration: currentSongInfo.duration || 0,
+                    elapsed: elapsed,
+                    paused: false,
+                    ts: Date.now()
+                };
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
+                }
+                sendChatMessage(t('msg_resumed', {user: user}));
+            }
             else { sendChatMessage(t('msg_already_playing', {user: user})); }
         }
 
         function pauseFromChat(user) {
-            if (currentSongInfo && player.getPlayerState() === 1) { player.pauseVideo(); sendChatMessage(t('msg_paused', {user: user})); }
+            if (currentSongInfo && player.getPlayerState() === 1) {
+                player.pauseVideo();
+                // Send PAUSED event
+                const elapsed = Math.round(player.getCurrentTime() || 0);
+                const payload = {
+                    type: 'NOW_PAUSED',
+                    id: currentSongInfo.id,
+                    title: currentSongInfo.title,
+                    author: currentSongInfo.author,
+                    user: currentSongInfo.user,
+                    duration: currentSongInfo.duration || 0,
+                    elapsed: elapsed,
+                    paused: true,
+                    ts: Date.now()
+                };
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PAUSED", data: payload, id: "SongPaused" }));
+                }
+                sendChatMessage(t('msg_paused', {user: user}));
+            }
             else { sendChatMessage(t('msg_already_paused', {user: user})); }
         }
 
         function stopFromChat(user) {
             if (currentSongInfo && player.getPlayerState() !== 5) {
                 player.stopVideo();
+                // Send STOPPED event
+                const payload = {
+                    type: 'NOW_STOPPED',
+                    id: null,
+                    stopped: true,
+                    ts: Date.now()
+                };
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
+                }
                 document.getElementById('now-playing-title').innerText = "STOP";
                 sendChatMessage(t('msg_stopped', {user: user}));
             } else { sendChatMessage(t('msg_nothing_playing', {user: user})); }
