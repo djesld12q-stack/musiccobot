@@ -226,7 +226,16 @@
 </div>
 
 <script>
-  let WS_PORT = localStorage.getItem('ytm_ws_port') || '8080';
+  // Configuration for WebSocket connection
+  // For OBS: Set these URL parameters: ?ws_host=YOUR_PC_IP&ws_port=8080
+  const urlParams = new URLSearchParams(window.location.search);
+  let WS_HOST = urlParams.get('ws_host') || 'localhost';
+  let WS_PORT = urlParams.get('ws_port') || localStorage.getItem('ytm_ws_port') || '8080';
+  
+  // Override with localStorage if on same machine
+  if (WS_HOST === 'localhost' && window.location.hostname !== 'localhost') {
+    WS_HOST = 'localhost'; // Still try localhost for OBS on same machine
+  }
 
   const COLORS = {
     request: { glow:'rgba(145,70,255,0.25)', bar:'#9146ff', badge:'rgba(145,70,255,0.85)' },
@@ -480,6 +489,7 @@
 
   // Start checking localStorage for updates
   log('Starting overlay... checking localStorage every 200ms');
+  log('WebSocket: ws://' + WS_HOST + ':' + WS_PORT + '/');
   setStatus('connected', 'Підключено · очікування пісні...');
   updateCheckInterval = setInterval(checkForSongUpdate, 200); // Check every 200ms
   
@@ -491,9 +501,9 @@
   let wsReconnectTimeout = null;
 
   function connectWebsocket() {
-    log('Attempting WebSocket connection to localhost:' + WS_PORT);
+    log('Attempting WebSocket connection to ' + WS_HOST + ':' + WS_PORT);
     try {
-      ws = new WebSocket('ws://localhost:' + WS_PORT + '/');
+      ws = new WebSocket('ws://' + WS_HOST + ':' + WS_PORT + '/');
 
       ws.onopen = () => {
         log('WebSocket connected!');
@@ -559,13 +569,17 @@
   }
 
   // Try WebSocket after a delay (in case localStorage works)
+  const isOBSBrowser = navigator.userAgent.includes('CEF');
+  const wsDelay = isOBSBrowser ? 0 : 2000; // No delay in OBS
+  
   setTimeout(() => {
     const stored = localStorage.getItem('ytm_now_playing');
-    if (!stored) {
-      log('No localStorage data found, trying WebSocket...');
+    if (!stored || isOBSBrowser) {
+      if (!stored) log('No localStorage data found, trying WebSocket...');
+      if (isOBSBrowser) log('OBS Browser Source detected - using WebSocket only');
       connectWebsocket();
     }
-  }, 2000);
+  }, wsDelay);
 </script>
 </body>
 </html>
