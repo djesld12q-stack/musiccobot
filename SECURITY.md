@@ -1,21 +1,24 @@
-# Security Policy
+# Політика безпеки
 
-## Supported Versions
+## Підтримувані версії
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+У цьому розділі вкажіть, які версії вашого проєкту
+наразі підтримуються оновленнями безпеки.
 
-| Version | Supported          |
+| Версія | Підтримується          |
 | ------- | ------------------ |
 | 5.1.x   | :white_check_mark: |
 | 5.0.x   | :x:                |
 | 4.0.x   | :white_check_mark: |
 | < 4.0   | :x:                |
 
-## Reporting a Vulnerability
+## Повідомлення про вразливість
 
-Use this section to tell people how to report a vulnerability.
+У цьому розділі розкажіть користувачам, як повідомити про вразливість.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Повідомте їм, куди звертатися, як часто вони можуть очікувати на оновлення щодо
+повідомленої вразливості, чого очікувати, якщо вразливість буде прийнята або
+відхилена тощо.
+
+
+Translated with DeepL.com (free version)
