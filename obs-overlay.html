@@ -384,7 +384,12 @@
 
   // ── Sync event (periodic update from index.html) ───────────────────────────
   function syncSong(data) {
-    if (!card.classList.contains('visible')) return;
+    // If card is not visible yet, show the song first
+    if (!card.classList.contains('visible')) {
+      log('Card not visible yet, showing song first');
+      showSong(data);
+      return;
+    }
     // Resync elapsed time
     elapsed  = data.elapsed || 0;
     duration = data.duration || duration;
