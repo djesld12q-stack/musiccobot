@@ -1485,12 +1485,17 @@
 
         function updateNowPlayingOverlay(songInfo) {
             if (songInfo) {
-                localStorage.setItem('ytm_now_playing', JSON.stringify({
-                    id: songInfo.id, title: songInfo.title, author: songInfo.author,
-                    user: songInfo.user, duration: songInfo.duration || 0, stopped: false, ts: Date.now()
-                }));
+                const payload = { id: songInfo.id, title: songInfo.title, author: songInfo.author, user: songInfo.user, duration: songInfo.duration || 0, stopped: false, ts: Date.now() };
+                localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PLAYING", data: payload, id: "NowPlaying" }));
+                }
             } else {
-                localStorage.setItem('ytm_now_playing', JSON.stringify({ id: null, stopped: true, ts: Date.now() }));
+                const payload = { id: null, stopped: true, ts: Date.now() };
+                localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PLAYING", data: payload, id: "NowPlaying" }));
+                }
             }
         }
 

@@ -145,10 +145,21 @@
 
 <script>
 /*
-  Reads localStorage["ytm_now_playing"] written by index.html.
-  Both files must be on the same HTTP server in Streamer.bot.
-  OBS Browser Source: 420 × 130 px
+  ══════════════════════════════════════════════════════════════
+  OBS Now Playing Overlay — musiccobot
+  
+  Підключається до WebSocket Streamer.bot і слухає подію
+  NOW_PLAYING яку надсилає index.html при кожній зміні пісні.
+  
+  В OBS додай як Browser Source:
+    URL: ws://localhost:8080  ← НЕ потрібно, файл локальний
+    
+  Просто додай цей файл як Local File у Browser Source OBS.
+  Розмір: 420 × 130 px
+  ══════════════════════════════════════════════════════════════
 */
+
+const WS_PORT = 8080; // має співпадати з портом у index.html
 
 const COLORS = {
   request: { glow:'rgba(145,70,255,0.25)', bar:'#9146ff', badge:'rgba(145,70,255,0.85)' },
@@ -169,7 +180,7 @@ const reqRow    = document.getElementById('req-row');
 const reqUser   = document.getElementById('req-user');
 const waveBarsEl= document.getElementById('wave-bars');
 
-// build waveform once
+// build waveform
 const WAVE_N = 52;
 for (let i = 0; i < WAVE_N; i++) {
   const b = document.createElement('div');
@@ -183,16 +194,15 @@ function fmt(s) {
   s = Math.max(0, Math.round(s));
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
-
 function updateWave(pct) {
   const played = Math.floor(pct * WAVE_N);
   wBars.forEach((b, i) => b.classList.toggle('played', i < played));
 }
 
-let lastId   = null;
-let startTs  = null;
+let lastId  = null;
+let startTs = null;
 let duration = 0;
-let ticker   = null;
+let ticker  = null;
 
 function tick() {
   if (!startTs) return;
@@ -214,7 +224,7 @@ function showSong(data) {
   card.style.setProperty('--accent-bar',  c.bar);
   srcBadge.style.background  = c.badge;
 
-  const labels = { auto: 'Auto', manual: 'Manual', request: '!SR' };
+  const labels = { auto:'Auto', manual:'Manual', request:'!SR' };
   srcBadge.textContent  = labels[type];
   modeBadge.textContent = labels[type];
 
@@ -256,21 +266,60 @@ function hideSong() {
   card.classList.remove('visible');
 }
 
-function poll() {
+// ── WebSocket ──
+let ws = null;
+
+function connect() {
   try {
-    const raw = localStorage.getItem('ytm_now_playing');
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (data.stopped || !data.id) {
-      if (lastId !== null) hideSong();
-    } else if (data.id !== lastId) {
-      showSong(data);
-    }
-  } catch (_) {}
+    ws = new WebSocket(`ws://localhost:${WS_PORT}/`);
+
+    ws.onopen = () => {
+      // підписуємось на General Custom події (те що BroadcastEvent надсилає)
+      ws.send(JSON.stringify({
+        request: 'Subscribe',
+        events: { General: ['Custom'] },
+        id: 'OvSub'
+      }));
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+
+        // ігноруємо службові повідомлення
+        if (msg.id === 'OvSub' || msg.request === 'Hello') return;
+
+        // BroadcastEvent від index.html приходить як General.Custom
+        // з полем name === 'NOW_PLAYING'
+        let data = null;
+
+        if (msg.data && msg.data.name === 'NOW_PLAYING') {
+          // формат: { data: { name, data: {...} } }
+          data = typeof msg.data.data === 'string'
+            ? JSON.parse(msg.data.data)
+            : msg.data.data;
+        } else if (msg.name === 'NOW_PLAYING') {
+          data = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data;
+        }
+
+        if (!data) return;
+
+        if (data.stopped || !data.id) {
+          hideSong();
+        } else {
+          showSong(data);
+        }
+      } catch (_) {}
+    };
+
+    ws.onclose = () => setTimeout(connect, 3000);
+    ws.onerror = () => ws.close();
+  } catch (_) {
+    setTimeout(connect, 3000);
+  }
 }
 
-setInterval(poll, 1000);
-poll();
+connect();
 </script>
 </body>
 </html>
