@@ -613,6 +613,227 @@
       connectWebsocket();
     }
   }, wsDelay);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AUDIO PLAYER for OBS — Hidden YouTube IFrame to capture sound
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  // ── Hidden audio container (1x1px, off-screen, not display:none) ──────────
+  const audioContainer = document.createElement('div');
+  audioContainer.id = 'audio-player-container';
+  audioContainer.style.cssText = 'position:fixed;bottom:-100px;left:-100px;width:1px;height:1px;overflow:hidden;pointer-events:none;z-index:-9999;';
+  document.body.appendChild(audioContainer);
+
+  // ── Audio player state ──────────────────────────────────────────────────────
+  let audioPlayer = null;
+  let audioReady = false;
+  let currentAudioId = null;
+  let pendingAudioAction = null;
+
+  // ── Preserve existing onYouTubeIframeAPIReady handler (if any) ──────────────
+  const prevYTReady = window.onYouTubeIframeAPIReady;
+
+  window.onYouTubeIframeAPIReady = function() {
+    if (prevYTReady) prevYTReady();
+    createAudioPlayer();
+  };
+
+  // ── Create the hidden audio player ──────────────────────────────────────────
+  function createAudioPlayer() {
+    if (audioPlayer) return; // Already created
+    
+    log('🎵 Creating hidden audio player...');
+    
+    audioPlayer = new YT.Player('audio-player-container', {
+      height: '1',
+      width: '1',
+      videoId: '',
+      playerVars: {
+        autoplay: 1,
+        controls: 0,
+        playsinline: 1,
+        disablekb: 1,
+        modestbranding: 1,
+      },
+      events: {
+        'onReady': onAudioPlayerReady,
+        'onStateChange': onAudioPlayerStateChange,
+        'onError': onAudioPlayerError,
+      },
+      origin: window.location.origin,
+    });
+  }
+
+  function onAudioPlayerReady() {
+    audioReady = true;
+    log('🎵 Audio player ready');
+    
+    // Attempt to unmute (for OBS/CEF, unmute on autoplay usually works)
+    try {
+      audioPlayer.unMute();
+      audioPlayer.setVolume(100);
+      log('🎵 Audio unmuted and volume set to 100');
+    } catch (e) {
+      log('⚠️ Audio unmute warning: ' + e);
+    }
+
+    // If there was a pending action while waiting for ready, execute it now
+    if (pendingAudioAction) {
+      const action = pendingAudioAction;
+      pendingAudioAction = null;
+      action();
+    }
+  }
+
+  function onAudioPlayerStateChange(e) {
+    const stateNames = ['UNSTARTED', 'ENDED', 'PLAYING', 'PAUSED', 'BUFFERING', 'CUED'];
+    log('🎵 Audio player state: ' + stateNames[e.data] + ' (id: ' + currentAudioId + ')');
+  }
+
+  function onAudioPlayerError(e) {
+    log('❌ Audio player error: code ' + e.data);
+    currentAudioId = null;
+  }
+
+  // ── Enqueue audio action if player is not ready yet ────────────────────────
+  function queueAudioAction(fn) {
+    if (audioReady) {
+      fn();
+    } else {
+      log('⏳ Audio action queued (player not ready yet)');
+      pendingAudioAction = fn;
+    }
+  }
+
+  // ── Audio sync functions ────────────────────────────────────────────────────
+  function audioLoadAndSeek(videoId, startSeconds) {
+    if (!audioReady) {
+      log('⏳ Audio load queued for videoId: ' + videoId);
+      pendingAudioAction = () => audioLoadAndSeek(videoId, startSeconds);
+      return;
+    }
+
+    log('🎵 Loading audio videoId: ' + videoId + ' @ ' + startSeconds + 's');
+    startSeconds = Math.max(0, Math.floor(startSeconds || 0));
+    currentAudioId = videoId;
+    audioPlayer.loadVideoById({ videoId: videoId, startSeconds: startSeconds });
+  }
+
+  function audioPlay() {
+    if (!audioReady) {
+      log('⏳ Audio play queued');
+      pendingAudioAction = () => audioPlay();
+      return;
+    }
+    if (audioPlayer && currentAudioId) {
+      log('🎵 Audio playing');
+      audioPlayer.playVideo();
+    }
+  }
+
+  function audioPause() {
+    if (!audioReady || !audioPlayer) return;
+    log('🎵 Audio paused');
+    audioPlayer.pauseVideo();
+  }
+
+  function audioStop() {
+    if (!audioReady || !audioPlayer) return;
+    log('🎵 Audio stopped');
+    audioPlayer.stopVideo();
+    currentAudioId = null;
+  }
+
+  function audioSeekIfDrifted(targetSeconds, maxDrift) {
+    if (!audioReady || !audioPlayer || !currentAudioId) return;
+    
+    targetSeconds = Math.max(0, targetSeconds || 0);
+    const currentTime = audioPlayer.getCurrentTime() || 0;
+    const drift = Math.abs(currentTime - targetSeconds);
+
+    if (drift > maxDrift) {
+      log('🎵 Audio drift detected (' + drift.toFixed(1) + 's), seeking to ' + targetSeconds.toFixed(1) + 's');
+      audioPlayer.seekTo(targetSeconds, true);
+    }
+  }
+
+  // ── Override showSong ──────────────────────────────────────────────────────
+  const origShowSong = showSong;
+  showSong = function(data) {
+    origShowSong.call(this, data);
+
+    if (data && data.id) {
+      const videoId = data.id;
+      const startSeconds = Math.max(0, Math.floor(data.elapsed || 0));
+
+      if (videoId !== currentAudioId) {
+        // New song, load and start
+        audioLoadAndSeek(videoId, startSeconds);
+        if (!data.paused) {
+          audioPlay();
+        } else {
+          audioPause();
+        }
+      } else {
+        // Same song, just ensure state matches
+        audioSeekIfDrifted(startSeconds, 3);
+        if (!data.paused) {
+          audioPlay();
+        } else {
+          audioPause();
+        }
+      }
+    }
+  };
+
+  // ── Override setPausedState ───────────────────────────────────────────────
+  const origSetPausedState = setPausedState;
+  setPausedState = function(paused) {
+    origSetPausedState.call(this, paused);
+
+    if (paused) {
+      audioPause();
+    } else {
+      audioPlay();
+    }
+  };
+
+  // ── Override hideSong ─────────────────────────────────────────────────────
+  const origHideSong = hideSong;
+  hideSong = function() {
+    origHideSong.call(this);
+    audioStop();
+  };
+
+  // ── Override syncSong ─────────────────────────────────────────────────────
+  const origSyncSong = syncSong;
+  syncSong = function(data) {
+    origSyncSong.call(this, data);
+
+    if (data && data.id && data.id === currentAudioId) {
+      const targetSeconds = Math.max(0, Math.floor(data.elapsed || 0));
+      audioSeekIfDrifted(targetSeconds, 3);
+      
+      if (data.paused) {
+        audioPause();
+      } else {
+        audioPlay();
+      }
+    }
+  };
+
+  // ── Load YouTube IFrame API (if not already loaded) ────────────────────────
+  if (!window.YT || !window.YT.Player) {
+    log('📺 Loading YouTube IFrame API script...');
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+  } else {
+    log('📺 YouTube IFrame API already loaded, initializing audio player...');
+    if (window.onYouTubeIframeAPIReady) {
+      window.onYouTubeIframeAPIReady();
+    }
+  }
 </script>
 </body>
 </html>
