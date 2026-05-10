@@ -396,14 +396,14 @@
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
       </button>
+        <!-- Skip Ad (visible in control row; disabled when no ad) -->
+        <button class="ctrl-btn skip-ad-btn" id="btn-skip-ad" title="Skip Ad" onclick="sendCmd('CMD_SKIP_AD', this)" style="display:inline-flex">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+        </button>
 
-    </div>
-
-    <!-- Skip Ad button (hidden unless an ad is playing) -->
-    <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-      <button id="btn-skip-ad" class="skip-ad-btn" style="display:none" title="Skip Ad" onclick="sendCmd('CMD_SKIP_AD', this)">skp ADS</button>
-    </div>
-
+      </div>
   </div>
 </div>
 
@@ -420,6 +420,15 @@
   const timeCurEl = document.getElementById('time-current');
   const timeTotEl = document.getElementById('time-total');
   const btnSkipAd = document.getElementById('btn-skip-ad');
+
+  // Debug: force-show Skip-Ad button when localStorage 'ytm_debug_skip_visible' === '1'
+  try {
+    if (btnSkipAd && localStorage.getItem('ytm_debug_skip_visible') === '1') {
+      btnSkipAd.style.display = 'inline-flex';
+      btnSkipAd.disabled = false;
+      console.log('[MiniPlayer] Debug: skip-ad forced visible via ytm_debug_skip_visible');
+    }
+  } catch(e) { }
 
   // ── State ────────────────────────────────────────────────────────────────
   let currentId   = null;
@@ -804,14 +813,16 @@
     if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = null; }
   }
 
-  // Update Skip-Ad UI
+  // Update Skip-Ad UI (supports debug override via localStorage 'ytm_debug_skip_visible' = '1')
   function updateAdUI(flag) {
     try {
       adActive = !!flag;
       if (!btnSkipAd) return;
-      btnSkipAd.style.display = adActive ? 'inline-flex' : 'none';
-      btnSkipAd.disabled = !adActive;
-      console.log('[MiniPlayer] updateAdUI:', adActive);
+      const debugForce = localStorage.getItem('ytm_debug_skip_visible') === '1';
+      const visible = adActive || debugForce;
+      btnSkipAd.style.display = visible ? 'inline-flex' : 'none';
+      btnSkipAd.disabled = !visible;
+      console.log('[MiniPlayer] updateAdUI:', { adActive, debugForce, visible });
     } catch(e) { console.error('[MiniPlayer] updateAdUI error', e); }
   }
 
