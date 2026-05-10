@@ -293,15 +293,14 @@
     <div class="controls">
 
       <!-- Prev -->
-      <button class="ctrl-btn" id="btn-prev" title="Попередня пісня" onclick="sendCmd('CMD_PREV')">
+      <button class="ctrl-btn" id="btn-prev" title="Попередня пісня" onclick="sendCmd('CMD_PREV', this)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
         </svg>
       </button>
 
       <!-- Play/Pause -->
-      <button class="ctrl-btn play-pause" id="btn-play" title="Пауза / Відтворити" onclick="sendCmd('CMD_TOGGLE')">
-        <!-- pause icon by default, swapped by JS -->
+      <button class="ctrl-btn play-pause" id="btn-play" title="Пауза / Відтворити" onclick="sendCmd('CMD_TOGGLE', this)">
         <svg id="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
         </svg>
@@ -311,7 +310,7 @@
       </button>
 
       <!-- Next -->
-      <button class="ctrl-btn" id="btn-next" title="Наступна пісня" onclick="sendCmd('CMD_NEXT')">
+      <button class="ctrl-btn" id="btn-next" title="Наступна пісня" onclick="sendCmd('CMD_NEXT', this)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
@@ -439,20 +438,22 @@
   setTimeout(poll, 300);
 
   // ── Send commands to index.html ──────────────────────────────────────────
-  function sendCmd(type) {
+  function sendCmd(type, btn) {
     localStorage.setItem('ytm_mini_cmd', JSON.stringify({ type, ts: Date.now() }));
 
-    // Optimistic UI — mirror the action immediately
+    // Optimistic UI for toggle
     if (type === 'CMD_TOGGLE') {
-      updatePauseState(!isPaused);
-      const payload = { type: isPaused ? 'NOW_RESUMED' : 'NOW_PAUSED', ts: Date.now() };
-      // Keep overlay in sync too
+      const willBePaused = !isPaused;
+      updatePauseState(willBePaused);
+      const payload = { type: willBePaused ? 'NOW_PAUSED' : 'NOW_RESUMED', ts: Date.now() };
       localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
     }
 
     // Ripple effect
-    event.currentTarget.classList.add('ripple');
-    setTimeout(() => event.currentTarget.classList.remove('ripple'), 350);
+    if (btn) {
+      btn.classList.add('ripple');
+      setTimeout(() => btn.classList.remove('ripple'), 350);
+    }
   }
 </script>
 </body>
