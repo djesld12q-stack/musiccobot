@@ -1976,9 +1976,10 @@
                 if (!cmd || !cmd.type) return;
                 if (cmd.ts && Date.now() - cmd.ts > 3000) return;
                 console.log('[MiniPlayer] cmd:', cmd.type);
-                if      (cmd.type === 'CMD_PREV')   prevSong();
-                else if (cmd.type === 'CMD_TOGGLE') togglePlay();
-                else if (cmd.type === 'CMD_NEXT')   skipSong();
+                if      (cmd.type === 'CMD_PREV')  prevSong();
+                else if (cmd.type === 'CMD_NEXT')  skipSong();
+                else if (cmd.type === 'CMD_PAUSE' && player && currentSongInfo) player.pauseVideo();
+                else if (cmd.type === 'CMD_PLAY'  && player && currentSongInfo) player.playVideo();
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
         try {
