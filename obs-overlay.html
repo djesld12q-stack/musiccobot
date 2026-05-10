@@ -299,8 +299,10 @@
 
   // ── Pause / Resume visual state ────────────────────────────────────────────
   function setPausedState(paused) {
+    console.log('[Overlay] setPausedState called:', { paused, currentId: currentSongId, ts: Date.now() });
     isPaused = paused;
     if (paused) {
+      console.log('[Overlay] Pausing - adding paused class, clearing timer');
       card.classList.add('paused');
       pauseOverlay.classList.add('visible');
       labelTextEl.textContent = 'Paused';
@@ -308,8 +310,10 @@
       if (startTs) {
         elapsed += (Date.now() - startTs) / 1000;
         startTs = null;
+        console.log('[Overlay] Paused - elapsed updated to:', elapsed);
       }
     } else {
+      console.log('[Overlay] Resuming - removing paused class, starting timer');
       card.classList.remove('paused');
       pauseOverlay.classList.remove('visible');
       labelTextEl.textContent = 'Now Playing';
@@ -390,6 +394,14 @@
 
   // ── Sync event (periodic update from index.html) ───────────────────────────
   function syncSong(data) {
+    console.log('[Overlay] syncSong called:', { 
+      currentId: currentSongId, 
+      newId: data.id,
+      paused: data.paused,
+      elapsed: data.elapsed,
+      visible: card.classList.contains('visible')
+    });
+    
     // If card is not visible yet, show the song first
     if (!card.classList.contains('visible')) {
       log('Card not visible yet, showing song first');
@@ -407,7 +419,27 @@
     // Resync elapsed time (same song)
     elapsed  = data.elapsed || 0;
     duration = data.duration || duration;
+    const wasPaused = isPaused;
     isPaused = !!data.paused;
+    
+    console.log('[Overlay] syncSong - paused state:', { wasPaused, isPaused });
+    
+    // Update UI if pause state changed
+    if (wasPaused !== isPaused) {
+      console.log('[Overlay] Pause state changed, updating UI');
+      if (isPaused) {
+        card.classList.add('paused');
+        pauseOverlay.classList.add('visible');
+        labelTextEl.textContent = 'Paused';
+        startTs = null;
+      } else {
+        card.classList.remove('paused');
+        pauseOverlay.classList.remove('visible');
+        labelTextEl.textContent = 'Now Playing';
+        startTs = Date.now();
+      }
+    }
+    
     if (!isPaused) {
       startTs = Date.now();
     } else {
@@ -449,14 +481,20 @@
       const data = JSON.parse(stored);
       const now = Date.now();
       
-      log('Data from localStorage: ' + JSON.stringify(data));
+      console.log('[Overlay] checkForSongUpdate:', {
+        type: data.type,
+        ts: data.ts,
+        timeSinceUpdate: now - data.ts,
+        lastUpdate,
+        paused: data.paused
+      });
       
       // Only process if data was updated recently (within last 3 seconds)
       if (data.ts && (now - data.ts) < 3000) {
         if (data.ts === lastUpdate) return; // No update
         lastUpdate = data.ts;
         
-        log('Processing: ' + data.type);
+        console.log('[Overlay] Processing event:', data.type);
         
         if (data.type === 'NOW_PLAYING') {
           if (data.stopped || !data.id) {
@@ -469,15 +507,21 @@
         }
         else if (data.type === 'NOW_PAUSED') {
           if (card.classList.contains('visible')) {
+            console.log('[Overlay] Event NOW_PAUSED received');
             log('Setting paused state');
             setPausedState(true);
+          } else {
+            console.log('[Overlay] Event NOW_PAUSED received but card not visible');
           }
         }
         else if (data.type === 'NOW_RESUMED') {
           if (card.classList.contains('visible')) {
             if (data.elapsed !== undefined) elapsed = data.elapsed;
+            console.log('[Overlay] Event NOW_RESUMED received, elapsed:', elapsed);
             log('Setting resumed state');
             setPausedState(false);
+          } else {
+            console.log('[Overlay] Event NOW_RESUMED received but card not visible');
           }
         }
         else if (data.type === 'NOW_STOPPED') {
@@ -485,8 +529,11 @@
           hideSong();
         }
         else if (data.type === 'NOW_SYNC') {
+          console.log('[Overlay] Event NOW_SYNC received');
           syncSong(data);
         }
+      } else if (data.ts) {
+        console.log('[Overlay] Data too old:', now - data.ts, 'ms ago');
       }
     } catch (err) {
       console.error('[OBS Overlay] Error reading localStorage:', err);

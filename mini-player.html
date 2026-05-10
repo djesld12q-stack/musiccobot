@@ -456,37 +456,70 @@
       if (d.ts && d.ts === lastTs) return;
       lastTs = d.ts || 0;
 
+      console.log('[MiniPlayer] Poll update:', {
+        type: d.type,
+        currentId,
+        newId: d.id,
+        paused: d.paused,
+        ts: Date.now()
+      });
+
       if (d.type === 'NOW_PLAYING') {
-        if (d.stopped || !d.id) hideSong();
-        else showSong(d);
+        if (d.stopped || !d.id) {
+          console.log('[MiniPlayer] Poll: hiding song');
+          hideSong();
+        }
+        else {
+          console.log('[MiniPlayer] Poll: showing new song');
+          showSong(d);
+        }
       }
       else if (d.type === 'NOW_PAUSED')   { 
         if (currentId) {
+          console.log('[MiniPlayer] Poll: updating to PAUSED');
           updatePauseState(true);
           console.log('[MiniPlayer] sync: NOW_PAUSED', { song: titleEl.textContent, ts: Date.now() });
+        } else {
+          console.warn('[MiniPlayer] Poll: NOW_PAUSED received but no currentId');
         }
       }
       else if (d.type === 'NOW_RESUMED')  { 
         if (currentId) {
+          console.log('[MiniPlayer] Poll: updating to RESUMED');
           updatePauseState(false);
           console.log('[MiniPlayer] sync: NOW_RESUMED', { song: titleEl.textContent, ts: Date.now() });
+        } else {
+          console.warn('[MiniPlayer] Poll: NOW_RESUMED received but no currentId');
         }
       }
       else if (d.type === 'NOW_STOPPED')  { 
+        console.log('[MiniPlayer] Poll: stopping song');
         hideSong();
         console.log('[MiniPlayer] sync: NOW_STOPPED', { ts: Date.now() });
       }
       else if (d.type === 'NOW_SYNC') {
-        if (!currentId && d.id) showSong(d);
+        if (!currentId && d.id) {
+          console.log('[MiniPlayer] Poll: showing song from sync');
+          showSong(d);
+        }
         else if (d.id === currentId) {
+          console.log('[MiniPlayer] Poll: sync paused state -', d.paused);
           updatePauseState(!!d.paused);
           console.log('[MiniPlayer] sync: NOW_SYNC', { paused: !!d.paused, ts: Date.now() });
         }
       }
       // legacy (no type field)
-      else if (!d.type && d.id) { showSong(d); }
-      else if (!d.type && d.stopped) { hideSong(); }
-    } catch(e) {}
+      else if (!d.type && d.id) { 
+        console.log('[MiniPlayer] Poll: legacy - showing song');
+        showSong(d); 
+      }
+      else if (!d.type && d.stopped) { 
+        console.log('[MiniPlayer] Poll: legacy - hiding song');
+        hideSong(); 
+      }
+    } catch(e) { 
+      console.error('[MiniPlayer] Poll error:', e);
+    }
   }
 
   setInterval(poll, 200);

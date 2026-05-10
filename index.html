@@ -1585,12 +1585,18 @@
 
         function onPlayerStateChange(e) {
             // 0 = ENDED, 1 = PLAYING, 2 = PAUSED, 5 = CUED
+            const stateNames = ['ENDED', 'PLAYING', 'PAUSED', 'UNKNOWN', 'UNKNOWN', 'CUED'];
+            const stateName = stateNames[e.data] || 'UNKNOWN';
+            console.log('[Player] State change:', stateName, '(', e.data, ')');
+            
             if (e.data === 0) {
                 // Song ended
+                console.log('[Player] Song ended, playing next');
                 playNext();
             }
             else if (e.data === 1) {
                 // Playing
+                console.log('[Player] Playing - updating overlay');
                 document.getElementById('now-playing-title').innerText = currentSongInfo.title;
                 document.getElementById('now-playing-meta').innerText = currentSongInfo.user === "Auto" ? `Auto` : `👤 ${currentSongInfo.user}`;
                 // Update overlay state
@@ -1607,6 +1613,7 @@
                         paused: false,
                         ts: Date.now()
                     };
+                    console.log('[Player] Broadcasting NOW_RESUMED');
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
@@ -1615,6 +1622,7 @@
             }
             else if (e.data === 2) {
                 // Paused
+                console.log('[Player] Paused - updating overlay');
                 if (currentSongInfo) {
                     const elapsed = Math.round(player.getCurrentTime() || 0);
                     const payload = {
@@ -1628,10 +1636,13 @@
                         paused: true,
                         ts: Date.now()
                     };
+                    console.log('[Player] Broadcasting NOW_PAUSED', { title: currentSongInfo.title, elapsed });
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PAUSED", data: payload, id: "SongPaused" }));
                     }
+                } else {
+                    console.warn('[Player] Paused but no currentSongInfo');
                 }
             }
         }
@@ -1975,11 +1986,29 @@
             try {
                 if (!cmd || !cmd.type) return;
                 if (cmd.ts && Date.now() - cmd.ts > 3000) return;
-                console.log('[MiniPlayer] cmd:', cmd.type);
+                console.log('[MiniPlayer] cmd:', cmd.type, { 
+                    playerExists: !!player, 
+                    playerState: player ? player.getPlayerState() : 'N/A',
+                    currentSong: currentSongInfo ? currentSongInfo.title : 'none'
+                });
                 if      (cmd.type === 'CMD_PREV')  prevSong();
                 else if (cmd.type === 'CMD_NEXT')  skipSong();
-                else if (cmd.type === 'CMD_PAUSE' && player && currentSongInfo) player.pauseVideo();
-                else if (cmd.type === 'CMD_PLAY'  && player && currentSongInfo) player.playVideo();
+                else if (cmd.type === 'CMD_PAUSE') {
+                    if (player) {
+                        console.log('[MiniPlayer] Executing PAUSE command');
+                        player.pauseVideo();
+                    } else {
+                        console.warn('[MiniPlayer] PAUSE: player not ready');
+                    }
+                }
+                else if (cmd.type === 'CMD_PLAY') {
+                    if (player) {
+                        console.log('[MiniPlayer] Executing PLAY command');
+                        player.playVideo();
+                    } else {
+                        console.warn('[MiniPlayer] PLAY: player not ready');
+                    }
+                }
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
         try {
