@@ -2054,6 +2054,20 @@
                         seekInterval = null;
                     }
                 }
+                else if (cmd.type === 'CMD_SEEK_TO') {
+                    console.log('[MiniPlayer] SEEK_TO', cmd.payload);
+                    try {
+                        if (player && cmd.payload && typeof cmd.payload.time !== 'undefined') {
+                            const t = parseFloat(cmd.payload.time);
+                            if (!isNaN(t)) {
+                                const clamped = Math.max(0, Math.min(t, (currentSongInfo && currentSongInfo.duration) ? currentSongInfo.duration : t));
+                                player.seekTo(clamped, true);
+                            }
+                        } else {
+                            console.warn('[MiniPlayer] SEEK_TO: invalid payload', cmd.payload);
+                        }
+                    } catch(err) { console.error('[MiniPlayer] SEEK_TO error', err); }
+                }
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
         try {

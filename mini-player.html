@@ -334,6 +334,14 @@
         <span class="song-title" id="song-title">–</span>
       </div>
       <div class="song-author" id="song-author"></div>
+
+      <div class="progress-container" id="progress-container" title="Seek">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="time-display" id="time-display">
+        <span class="time-current" id="time-current">0:00</span>
+        <span class="time-total" id="time-total">0:00</span>
+      </div>
     </div>
 
     <!-- Controls -->
@@ -388,11 +396,20 @@
   const statusLabel = document.getElementById('status-label');
   const iconPause   = document.getElementById('icon-pause');
   const iconPlay    = document.getElementById('icon-play');
+  const progressBarEl = document.getElementById('progress-bar');
+  const progressContainerEl = document.getElementById('progress-container');
+  const timeCurEl = document.getElementById('time-current');
+  const timeTotEl = document.getElementById('time-total');
 
   // ── State ────────────────────────────────────────────────────────────────
   let currentId   = null;
   let isPaused    = false;
   let lastTs      = 0;
+  // Progress tracking (elapsed/duration + local tick)
+  let songElapsed = 0;
+  let songDuration = 0;
+  let songStartTs = 0;
+  let progressRaf = null;
   
   // ── Seeking state ────────────────────────────────────────────────────────
   let isSeeking   = false;
@@ -427,6 +444,12 @@
         paused: data.paused,
         ts: Date.now()
       });
+
+      // Initialize progress state from sync payload (if present)
+      songDuration = data.duration || songDuration || 0;
+      songElapsed = (typeof data.elapsed !== 'undefined') ? data.elapsed : 0;
+      songStartTs = (!data.paused) ? Date.now() : 0;
+      startProgressTicker();
 
       // Thumbnail
       const newSrc = 'https://i.ytimg.com/vi/' + data.id + '/mqdefault.jpg';
@@ -475,6 +498,11 @@
       iconPlay.style.display  = 'none';
       console.log('[MiniPlayer] track stopped', { ts: Date.now() });
       
+      // Reset progress UI
+      stopProgressTicker();
+      songElapsed = 0; songDuration = 0; songStartTs = 0;
+      try { updateProgressUI(0, 0); } catch(e) {}
+
       // Fade-in to idle state
       card.classList.remove('transition-out');
     }, 200);
@@ -556,9 +584,14 @@
           showSong(d);
         }
         else if (d.id === currentId) {
-          console.log('[MiniPlayer] Poll: sync paused state -', d.paused);
+          console.log('[MiniPlayer] Poll: NOW_SYNC received', d);
+          // update duration/elapsed and paused state
+          songDuration = d.duration || songDuration || 0;
+          songElapsed = (typeof d.elapsed !== 'undefined') ? d.elapsed : songElapsed;
           updatePauseState(!!d.paused);
-          console.log('[MiniPlayer] sync: NOW_SYNC', { paused: !!d.paused, ts: Date.now() });
+          songStartTs = d.paused ? 0 : Date.now();
+          startProgressTicker();
+          console.log('[MiniPlayer] sync: NOW_SYNC', { paused: !!d.paused, elapsed: songElapsed, duration: songDuration, ts: Date.now() });
         }
       }
       // legacy (no type field)
@@ -612,8 +645,9 @@
   }
 
   // ── Send commands to index.html ──────────────────────────────────────────
-  function sendCmd(type, btn, isSeeking = false) {
+  function sendCmd(type, btn, isSeeking = false, payload = null) {
     const msg = { type, ts: Date.now() };
+    if (payload) msg.payload = payload;
 
     // 1) BroadcastChannel (миттєво, без polling)
     if (bc) bc.postMessage(msg);
@@ -631,7 +665,7 @@
       console.log('[MiniPlayer] cmd NEXT', cmdLog);
     } else if (type === 'CMD_PREV') {
       console.log('[MiniPlayer] cmd PREV', cmdLog);
-    } else if (type === 'CMD_SEEK_START_FORWARD' || type === 'CMD_SEEK_START_BACKWARD' || type === 'CMD_SEEK_STOP') {
+    } else if (type === 'CMD_SEEK_START_FORWARD' || type === 'CMD_SEEK_START_BACKWARD' || type === 'CMD_SEEK_STOP' || type === 'CMD_SEEK_TO') {
       console.log('[MiniPlayer] cmd SEEK:', type, cmdLog);
     }
 
@@ -644,6 +678,70 @@
       btn.classList.add('ripple');
       setTimeout(() => btn.classList.remove('ripple'), 350);
     }
+  }
+
+  // ── Progress helpers ──────────────────────────────────────────────────
+  function fmtTime(sec) {
+    if (!isFinite(sec) || sec <= 0) return '0:00';
+    sec = Math.floor(sec);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + (s < 10 ? '0' + s : s);
+  }
+
+  function updateProgressUI(cur, dur) {
+    try {
+      if (!progressBarEl) return;
+      if (!isFinite(dur) || dur <= 0) {
+        progressBarEl.style.width = '0%';
+        if (timeCurEl) timeCurEl.textContent = '0:00';
+        if (timeTotEl) timeTotEl.textContent = '0:00';
+        return;
+      }
+      const pct = Math.max(0, Math.min(1, (cur || 0) / dur)) * 100;
+      progressBarEl.style.width = pct + '%';
+      if (timeCurEl) timeCurEl.textContent = fmtTime(cur || 0);
+      if (timeTotEl) timeTotEl.textContent = fmtTime(dur || 0);
+    } catch(e) {}
+  }
+
+  function startProgressTicker() {
+    if (progressRaf) return;
+    function tick() {
+      if (!currentId || !isFinite(songDuration) || songDuration <= 0) {
+        updateProgressUI(0, songDuration || 0);
+        progressRaf = requestAnimationFrame(tick);
+        return;
+      }
+      let cur = songElapsed || 0;
+      if (songStartTs && !isPaused) {
+        cur = songElapsed + (Date.now() - songStartTs) / 1000;
+        if (cur > songDuration) cur = songDuration;
+      }
+      updateProgressUI(cur, songDuration);
+      progressRaf = requestAnimationFrame(tick);
+    }
+    progressRaf = requestAnimationFrame(tick);
+  }
+
+  function stopProgressTicker() {
+    if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = null; }
+  }
+
+  // Click / tap to seek on progress bar
+  if (progressContainerEl) {
+    progressContainerEl.addEventListener('click', function(e) {
+      if (!songDuration || songDuration <= 0) return;
+      const rect = progressContainerEl.getBoundingClientRect();
+      const clientX = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0] && e.touches[0].clientX) || 0;
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const newTime = pct * songDuration;
+      console.log('[MiniPlayer] Click seek to', newTime);
+      sendCmd('CMD_SEEK_TO', null, true, { time: newTime });
+      songElapsed = newTime;
+      songStartTs = Date.now();
+      updateProgressUI(newTime, songDuration);
+    });
   }
 </script>
 </body>
