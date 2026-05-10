@@ -305,7 +305,13 @@
     <div class="controls">
 
       <!-- Prev -->
-      <button class="ctrl-btn" id="btn-prev" title="Попередня пісня" onclick="sendCmd('CMD_PREV', this)">
+      <button class="ctrl-btn" id="btn-prev" title="Попередня пісня (зажим = перемотка)" 
+        onclick="sendCmd('CMD_PREV', this)"
+        onmousedown="startSeeking('backward', this)"
+        onmouseup="stopSeeking()"
+        onmouseleave="stopSeeking()"
+        ontouchstart="startSeeking('backward', this)"
+        ontouchend="stopSeeking()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
         </svg>
@@ -322,7 +328,13 @@
       </button>
 
       <!-- Next -->
-      <button class="ctrl-btn" id="btn-next" title="Наступна пісня" onclick="sendCmd('CMD_NEXT', this)">
+      <button class="ctrl-btn" id="btn-next" title="Наступна пісня (зажим = перемотка)"
+        onclick="sendCmd('CMD_NEXT', this)"
+        onmousedown="startSeeking('forward', this)"
+        onmouseup="stopSeeking()"
+        onmouseleave="stopSeeking()"
+        ontouchstart="startSeeking('forward', this)"
+        ontouchend="stopSeeking()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
@@ -346,6 +358,12 @@
   let currentId   = null;
   let isPaused    = false;
   let lastTs      = 0;
+  
+  // ── Seeking state ────────────────────────────────────────────────────────
+  let isSeeking   = false;
+  let seekDir     = null;  // 'forward' or 'backward'
+  let seekInterval = null;
+  let seekDelay   = 300;   // ms до початку перемотки
 
   // ── Glow colors matching obs-overlay ────────────────────────────────────
   const COLORS = {
@@ -529,8 +547,38 @@
   let bc = null;
   try { bc = new BroadcastChannel('musiccobot_ctrl'); } catch(e) {}
 
+  // ── Seeking functions ────────────────────────────────────────────────────
+  function startSeeking(direction, btn) {
+    console.log('[MiniPlayer] Seeking started:', direction);
+    isSeeking = true;
+    seekDir = direction;
+    
+    // Затримка перед початком перемотки (щоб клац не запускав перемотку)
+    setTimeout(() => {
+      if (!isSeeking || seekDir !== direction) return;
+      
+      console.log('[MiniPlayer] Seeking active:', direction);
+      seekInterval = setInterval(() => {
+        if (!isSeeking) return;
+        const cmd = direction === 'forward' ? 'CMD_SEEK_FORWARD' : 'CMD_SEEK_BACKWARD';
+        sendCmd(cmd, null, true); // true = is seeking
+      }, 100); // Перемотка кожні 100ms
+    }, seekDelay);
+  }
+
+  function stopSeeking() {
+    if (!isSeeking) return;
+    console.log('[MiniPlayer] Seeking stopped');
+    isSeeking = false;
+    seekDir = null;
+    if (seekInterval) {
+      clearInterval(seekInterval);
+      seekInterval = null;
+    }
+  }
+
   // ── Send commands to index.html ──────────────────────────────────────────
-  function sendCmd(type, btn) {
+  function sendCmd(type, btn, isSeeking = false) {
     const msg = { type, ts: Date.now() };
 
     // 1) BroadcastChannel (миттєво, без polling)
@@ -538,6 +586,7 @@
 
     // 2) localStorage + storage event (fallback)
     localStorage.setItem('ytm_mini_cmd', JSON.stringify(msg));
+    
     // Log command with context
     const cmdLog = { cmd: type, song: titleEl.textContent, ts: Date.now() };
     if (type === 'CMD_PAUSE') {
@@ -548,13 +597,18 @@
       console.log('[MiniPlayer] cmd NEXT', cmdLog);
     } else if (type === 'CMD_PREV') {
       console.log('[MiniPlayer] cmd PREV', cmdLog);
+    } else if (type === 'CMD_SEEK_FORWARD') {
+      if (!isSeeking) console.log('[MiniPlayer] cmd SEEK_FORWARD', cmdLog);
+    } else if (type === 'CMD_SEEK_BACKWARD') {
+      if (!isSeeking) console.log('[MiniPlayer] cmd SEEK_BACKWARD', cmdLog);
     }
+
     // Optimistic UI для паузи
     if (type === 'CMD_PAUSE') updatePauseState(true);
     if (type === 'CMD_PLAY')  updatePauseState(false);
 
-    // Ripple
-    if (btn) {
+    // Ripple (не для перемотки)
+    if (btn && !isSeeking) {
       btn.classList.add('ripple');
       setTimeout(() => btn.classList.remove('ripple'), 350);
     }

@@ -2009,6 +2009,22 @@
                         console.warn('[MiniPlayer] PLAY: player not ready');
                     }
                 }
+                else if (cmd.type === 'CMD_SEEK_FORWARD') {
+                    if (player) {
+                        const currentTime = player.getCurrentTime() || 0;
+                        const newTime = currentTime + 5; // Перемотка на 5 сек вперед
+                        player.seekTo(newTime, true);
+                        console.log('[MiniPlayer] Seek forward:', { from: currentTime, to: newTime });
+                    }
+                }
+                else if (cmd.type === 'CMD_SEEK_BACKWARD') {
+                    if (player) {
+                        const currentTime = player.getCurrentTime() || 0;
+                        const newTime = Math.max(0, currentTime - 5); // Перемотка на 5 сек назад
+                        player.seekTo(newTime, true);
+                        console.log('[MiniPlayer] Seek backward:', { from: currentTime, to: newTime });
+                    }
+                }
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
         try {
