@@ -614,6 +614,38 @@
   // ── BroadcastChannel — прямий зв'язок між вкладками ─────────────────────
   let bc = null;
   try { bc = new BroadcastChannel('musiccobot_ctrl'); } catch(e) {}
+  if (bc) {
+    bc.onmessage = function(e) {
+      try {
+        const d = e.data;
+        if (!d || !d.type) return;
+        // Ignore old events
+        if (d.ts && d.ts === lastTs) return;
+        lastTs = d.ts || 0;
+
+        // Handle now-playing events directly for instant UI updates
+        if (d.type === 'NOW_PLAYING') {
+          if (d.stopped || !d.id) hideSong();
+          else showSong(d);
+        } else if (d.type === 'NOW_STOPPED') {
+          hideSong();
+        } else if (d.type === 'NOW_PAUSED') {
+          updatePauseState(true);
+        } else if (d.type === 'NOW_RESUMED') {
+          updatePauseState(false);
+        } else if (d.type === 'NOW_SYNC') {
+          if (!currentId && d.id) showSong(d);
+          else if (d.id === currentId) {
+            songDuration = d.duration || songDuration || 0;
+            songElapsed = (typeof d.elapsed !== 'undefined') ? d.elapsed : songElapsed;
+            updatePauseState(!!d.paused);
+            songStartTs = d.paused ? 0 : Date.now();
+            startProgressTicker();
+          }
+        }
+      } catch(err) { console.error('[MiniPlayer] BC msg error', err); }
+    };
+  }
 
   // ── Seeking functions ────────────────────────────────────────────────────
   function startSeeking(direction, btn) {

@@ -285,6 +285,10 @@
   let isPaused  = false;
   let ticker    = null;
   let currentSongId = null;  // Track current song to detect changes
+  // Audio ad-auto-mute state for overlay's hidden audio player
+  let audioAdPlaying = false;
+  let audioAdMutedByAuto = false;
+  let audioPrevVolume = null;
 
   function tick() {
     if (isPaused || !startTs) return;
@@ -376,6 +380,28 @@
       startTs = Date.now();
     }
 
+    // Load audio into hidden audio player for OBS capture (if present)
+    try {
+      if (data && data.id && typeof audioLoadAndSeek === 'function') {
+        audioLoadAndSeek(data.id, Math.max(0, Math.floor(data.elapsed || 0)));
+        if (!data.paused) {
+          audioPlay();
+        } else {
+          audioPause();
+        }
+      }
+      // Reset any ad-state on new song
+      if (audioAdPlaying) {
+        try {
+          if (audioAdMutedByAuto) {
+            if (audioPlayer && typeof audioPlayer.unMute === 'function') { audioPlayer.unMute(); }
+            else if (audioPlayer && typeof audioPlayer.setVolume === 'function' && audioPrevVolume !== null) { audioPlayer.setVolume(audioPrevVolume); }
+          }
+        } catch(e) { console.error('[OverlayAudio] restore on new song error', e); }
+        audioAdPlaying = false; audioAdMutedByAuto = false; audioPrevVolume = null;
+      }
+    } catch (e) { console.error('[OverlayAudio] audio load/play error', e); }
+
     // Draw initial progress
     const pct = duration > 0 ? Math.min(1, elapsed / duration) : 0;
     barFill.style.transition = 'none';
@@ -401,6 +427,28 @@
       elapsed: data.elapsed,
       visible: card.classList.contains('visible')
     });
+    // Handle ad flag: mute/unmute hidden audio player used by overlay
+    try {
+      if (typeof data.ad !== 'undefined') {
+        if (data.ad && !audioAdPlaying) {
+          audioAdPlaying = true;
+          try {
+            if (audioPlayer) {
+              if (typeof audioPlayer.mute === 'function') { audioPlayer.mute(); audioAdMutedByAuto = true; console.log('[OverlayAudio] Ad detected — muted audioPlayer'); }
+              else if (typeof audioPlayer.setVolume === 'function') { audioPrevVolume = audioPlayer.getVolume(); audioPlayer.setVolume(0); audioAdMutedByAuto = true; console.log('[OverlayAudio] Ad detected — setVolume(0)'); }
+            }
+          } catch(e) { console.error('[OverlayAudio] mute error', e); }
+        } else if (!data.ad && audioAdPlaying) {
+          try {
+            if (audioAdMutedByAuto && audioPlayer) {
+              if (typeof audioPlayer.unMute === 'function') { audioPlayer.unMute(); console.log('[OverlayAudio] Ad ended — unMute called'); }
+              else if (typeof audioPlayer.setVolume === 'function' && audioPrevVolume !== null) { audioPlayer.setVolume(audioPrevVolume); console.log('[OverlayAudio] Ad ended — restored volume', audioPrevVolume); }
+            }
+          } catch(e) { console.error('[OverlayAudio] unmute error', e); }
+          audioAdPlaying = false; audioAdMutedByAuto = false; audioPrevVolume = null;
+        }
+      }
+    } catch(e) { console.error('[OverlayAudio] ad handling error', e); }
     
     // If card is not visible yet, show the song first
     if (!card.classList.contains('visible')) {

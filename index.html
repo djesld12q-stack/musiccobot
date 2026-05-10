@@ -1579,6 +1579,8 @@
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PLAYING", data: payload, id: "NowPlaying" }));
                 }
+                // Also broadcast via BroadcastChannel for instant updates to mini/overlay pages
+                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
                 // Start periodic sync every 500ms
                 syncInterval = setInterval(() => {
                     if (currentSongInfo && player && player.getPlayerState() !== 5) {
@@ -1603,6 +1605,8 @@
                         if (ws && ws.readyState === WebSocket.OPEN) {
                             ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_SYNC", data: syncPayload, id: "SongSync" }));
                         }
+                        // Also broadcast via BroadcastChannel for instant updates to mini/overlay pages
+                        try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(syncPayload); bcOut.close(); } catch(e) { }
                     }
                 }, 500);
             } else {
@@ -1614,6 +1618,8 @@
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
                 }
+                // Also broadcast via BroadcastChannel for instant updates to mini/overlay pages
+                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
             }
         }
 
@@ -1691,6 +1697,8 @@
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
                     }
+                    try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
+                    }
                 }
             }
             else if (e.data === 2) {
@@ -1715,6 +1723,8 @@
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PAUSED", data: payload, id: "SongPaused" }));
+                    }
+                    try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
                     }
                 } else {
                     console.warn('[Player] Paused but no currentSongInfo');
@@ -1744,6 +1754,7 @@
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
             }
+            try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
         }
 
         function playFromChat(user) {
@@ -1767,7 +1778,9 @@
             if (currentSongInfo && player.getPlayerState() !== 5) {
                 player.stopVideo();
                 document.getElementById('now-playing-title').innerText = "STOP";
-                localStorage.setItem('ytm_now_playing', JSON.stringify({ type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() }));
+                const __stopPayload = { type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() };
+                localStorage.setItem('ytm_now_playing', JSON.stringify(__stopPayload));
+                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(__stopPayload); bcOut.close(); } catch(e) { }
                 sendChatMessage(t('msg_stopped', {user: user}));
             } else { sendChatMessage(t('msg_nothing_playing', {user: user})); }
         }
