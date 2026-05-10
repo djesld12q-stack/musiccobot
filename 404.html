@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 — Сторінку не знайдено</title>
+<style>
+  :root{--bg:#0f0f12;--card:#0b0b0d;--accent:#ff6b6b;--text:#ffffff}
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#050506,#0f0f12);color:var(--text);display:flex;align-items:center;justify-content:center}
+  .card{background:rgba(255,255,255,0.03);padding:28px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.6);max-width:720px;text-align:center}
+  h1{font-size:56px;margin:0 0 6px;color:var(--accent)}
+  p{color:rgba(255,255,255,0.9);margin:6px 0}
+  .controls{display:flex;gap:12px;justify-content:center;margin-top:18px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+  .btn-back{background:#222;color:#fff}
+  .btn-home{background:var(--accent);color:#111}
+  a.btn-home{text-decoration:none}
+  .small{font-size:13px;color:rgba(255,255,255,0.5);margin-top:14px}
+</style>
+</head>
+<body>
+  <div class="card" role="main">
+    <h1>404</h1>
+    <p><strong>Сторінку не знайдено.</strong></p>
+    <p>Можливо, посилання неправильне або сторінку було переміщено.</p>
+    <div class="controls">
+      <button class="btn btn-back" onclick="history.back()">← Повернутись назад</button>
+      <a href="index.html" class="btn btn-home">На головну</a>
+    </div>
+    <div class="small">Якщо кнопка «Повернутись назад» не працює, натисніть «На головну».</div>
+  </div>
+<script>
+  // Авто-повернення через 10 сек (якщо бажаєте відключити — видаліть)
+  (function(){
+    let t = 10; const id = setInterval(()=>{ t--; if(t<=0){ clearInterval(id); try{ history.back(); }catch(e){ location.href='index.html'; } } },1000);
+  })();
+</script>
+</body>
+</html>
