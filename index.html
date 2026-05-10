@@ -896,7 +896,13 @@
         let currentSongInfo = null; 
         let titleCache = {};    
         let dragSourceIndex = null;
-        let isSrEnabled = false; 
+        let isSrEnabled = false;
+        
+        // ── Seeking state for mini-player ────────────────────────────────────
+        let isSeekingActive = false;
+        let seekDirection = null;   // 'forward' or 'backward'
+        let seekInterval = null;
+        const SEEK_SPEED = 0.2;     // секунд за кожен цикл (~200ms × 0.2 = 40ms per frame) 
 
         // =========================================================================
         // DEFAULT SONG FILTERS — loaded on first launch if no filters saved yet
@@ -2009,20 +2015,43 @@
                         console.warn('[MiniPlayer] PLAY: player not ready');
                     }
                 }
-                else if (cmd.type === 'CMD_SEEK_FORWARD') {
+                else if (cmd.type === 'CMD_SEEK_START_FORWARD') {
+                    console.log('[MiniPlayer] Start seeking FORWARD');
                     if (player) {
-                        const currentTime = player.getCurrentTime() || 0;
-                        const newTime = currentTime + 5; // Перемотка на 5 сек вперед
-                        player.seekTo(newTime, true);
-                        console.log('[MiniPlayer] Seek forward:', { from: currentTime, to: newTime });
+                        isSeekingActive = true;
+                        seekDirection = 'forward';
+                        
+                        if (seekInterval) clearInterval(seekInterval);
+                        seekInterval = setInterval(() => {
+                            if (!isSeekingActive || seekDirection !== 'forward') return;
+                            const currentTime = player.getCurrentTime() || 0;
+                            const newTime = currentTime + SEEK_SPEED;
+                            player.seekTo(newTime, true);
+                        }, 50); // Плавна перемотка кожні 50ms
                     }
                 }
-                else if (cmd.type === 'CMD_SEEK_BACKWARD') {
+                else if (cmd.type === 'CMD_SEEK_START_BACKWARD') {
+                    console.log('[MiniPlayer] Start seeking BACKWARD');
                     if (player) {
-                        const currentTime = player.getCurrentTime() || 0;
-                        const newTime = Math.max(0, currentTime - 5); // Перемотка на 5 сек назад
-                        player.seekTo(newTime, true);
-                        console.log('[MiniPlayer] Seek backward:', { from: currentTime, to: newTime });
+                        isSeekingActive = true;
+                        seekDirection = 'backward';
+                        
+                        if (seekInterval) clearInterval(seekInterval);
+                        seekInterval = setInterval(() => {
+                            if (!isSeekingActive || seekDirection !== 'backward') return;
+                            const currentTime = player.getCurrentTime() || 0;
+                            const newTime = Math.max(0, currentTime - SEEK_SPEED);
+                            player.seekTo(newTime, true);
+                        }, 50); // Плавна перемотка кожні 50ms
+                    }
+                }
+                else if (cmd.type === 'CMD_SEEK_STOP') {
+                    console.log('[MiniPlayer] Stop seeking');
+                    isSeekingActive = false;
+                    seekDirection = null;
+                    if (seekInterval) {
+                        clearInterval(seekInterval);
+                        seekInterval = null;
                     }
                 }
             } catch(e) { console.error('[MiniPlayer]', e); }

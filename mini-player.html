@@ -212,6 +212,41 @@
     z-index: 1;
   }
 
+  /* ── Progress Bar ── */
+  .progress-container {
+    position: relative;
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+    z-index: 1;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--accent, #9146ff);
+    width: 0%;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 8px var(--accent, #9146ff);
+  }
+
+  /* ── Time Display ── */
+  .time-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    z-index: 1;
+  }
+  .time-current {
+    color: rgba(255,255,255,0.6);
+  }
+
   .ctrl-btn {
     position: relative;
     width: 36px; height: 36px;
@@ -549,7 +584,7 @@
 
   // ── Seeking functions ────────────────────────────────────────────────────
   function startSeeking(direction, btn) {
-    console.log('[MiniPlayer] Seeking started:', direction);
+    console.log('[MiniPlayer] Seeking START:', direction);
     isSeeking = true;
     seekDir = direction;
     
@@ -557,24 +592,23 @@
     setTimeout(() => {
       if (!isSeeking || seekDir !== direction) return;
       
-      console.log('[MiniPlayer] Seeking active:', direction);
-      seekInterval = setInterval(() => {
-        if (!isSeeking) return;
-        const cmd = direction === 'forward' ? 'CMD_SEEK_FORWARD' : 'CMD_SEEK_BACKWARD';
-        sendCmd(cmd, null, true); // true = is seeking
-      }, 100); // Перемотка кожні 100ms
+      console.log('[MiniPlayer] Seeking ACTIVE:', direction);
+      const cmd = direction === 'forward' ? 'CMD_SEEK_START_FORWARD' : 'CMD_SEEK_START_BACKWARD';
+      sendCmd(cmd, null, true);
     }, seekDelay);
   }
 
   function stopSeeking() {
     if (!isSeeking) return;
-    console.log('[MiniPlayer] Seeking stopped');
+    console.log('[MiniPlayer] Seeking STOP');
     isSeeking = false;
     seekDir = null;
     if (seekInterval) {
       clearInterval(seekInterval);
       seekInterval = null;
     }
+    // Відправити команду STOP перемотці
+    sendCmd('CMD_SEEK_STOP', null, true);
   }
 
   // ── Send commands to index.html ──────────────────────────────────────────
@@ -587,7 +621,7 @@
     // 2) localStorage + storage event (fallback)
     localStorage.setItem('ytm_mini_cmd', JSON.stringify(msg));
     
-    // Log command with context
+    // Log command with context (don't log every seek pulse)
     const cmdLog = { cmd: type, song: titleEl.textContent, ts: Date.now() };
     if (type === 'CMD_PAUSE') {
       console.log('[MiniPlayer] cmd PAUSE', cmdLog);
@@ -597,10 +631,8 @@
       console.log('[MiniPlayer] cmd NEXT', cmdLog);
     } else if (type === 'CMD_PREV') {
       console.log('[MiniPlayer] cmd PREV', cmdLog);
-    } else if (type === 'CMD_SEEK_FORWARD') {
-      if (!isSeeking) console.log('[MiniPlayer] cmd SEEK_FORWARD', cmdLog);
-    } else if (type === 'CMD_SEEK_BACKWARD') {
-      if (!isSeeking) console.log('[MiniPlayer] cmd SEEK_BACKWARD', cmdLog);
+    } else if (type === 'CMD_SEEK_START_FORWARD' || type === 'CMD_SEEK_START_BACKWARD' || type === 'CMD_SEEK_STOP') {
+      console.log('[MiniPlayer] cmd SEEK:', type, cmdLog);
     }
 
     // Optimistic UI для паузи
