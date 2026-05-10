@@ -2162,9 +2162,40 @@
                     console.log('[MiniPlayer] CMD_SKIP_AD received');
                     try {
                         if (!currentSongInfo) { console.warn('[MiniPlayer] CMD_SKIP_AD: no current song'); return; }
-                        if (!isAdPlaying) { console.warn('[MiniPlayer] CMD_SKIP_AD: no ad playing'); return; }
                         const startAt = lastSongElapsedBeforeAd || 0;
-                        console.log('[Ad] Skip requested — reloading song at', startAt);
+
+                        // First try: click native YouTube skip button in this document (works only if present here)
+                        const skipSelectors = ['.ytp-ad-skip-button.ytp-button', '.ytp-ad-skip-button-modern', '.ytp-ad-skip-button'];
+                        let clicked = false;
+                        for (let sel of skipSelectors) {
+                            try {
+                                const btn = document.querySelector(sel);
+                                if (btn) {
+                                    btn.click();
+                                    clicked = true;
+                                    console.log('[Ad] Clicked local YouTube skip button (selector):', sel);
+                                    break;
+                                }
+                            } catch (e) { console.warn('[Ad] skip button click error for', sel, e); }
+                        }
+
+                        // Second try: best-effort postMessage to iframe (may be ignored / cross-origin)
+                        if (!clicked && player && typeof player.getIframe === 'function') {
+                            try {
+                                const iframe = player.getIframe();
+                                if (iframe && iframe.contentWindow) {
+                                    try {
+                                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'skipAd' }), '*');
+                                        console.log('[Ad] Posted skipAd message to iframe (best-effort)');
+                                    } catch (e) { console.warn('[Ad] postMessage to iframe failed', e); }
+                                }
+                            } catch (e) { console.warn('[Ad] iframe access error', e); }
+                        }
+
+                        // If we already clicked the skip button, stop — otherwise fallback to reload/seek
+                        if (clicked) return;
+
+                        console.log('[Ad] Skip requested — fallback reloading/seeking song at', startAt);
                         if (player && typeof player.loadVideoById === 'function') {
                             try {
                                 player.loadVideoById(currentSongInfo.id, startAt);
