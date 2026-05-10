@@ -1509,7 +1509,7 @@
                 if (!player) return;
                 // remember previous mute/volume state
                 if (typeof player.isMuted === 'function') {
-                    prevWasMuted = player.isMuted();
+                    try { prevWasMuted = !!player.isMuted(); } catch(e) { prevWasMuted = false; }
                 } else {
                     const v = (typeof player.getVolume === 'function') ? player.getVolume() : null;
                     prevWasMuted = (v === 0);
@@ -1517,9 +1517,12 @@
                 }
                 // if not already muted, mute and mark
                 if (!prevWasMuted) {
-                    if (typeof player.mute === 'function') { player.mute(); adMutedByAuto = true; }
-                    else if (typeof player.setVolume === 'function') { prevVolume = player.getVolume(); player.setVolume(0); adMutedByAuto = true; }
-                } else adMutedByAuto = false;
+                    if (typeof player.mute === 'function') { try { player.mute(); adMutedByAuto = true; console.log('[Ad] player.mute() called'); } catch(e) { console.error('[Ad] mute error', e); } }
+                    else if (typeof player.setVolume === 'function') { try { prevVolume = player.getVolume(); player.setVolume(0); adMutedByAuto = true; console.log('[Ad] setVolume(0) called'); } catch(e) { console.error('[Ad] setVolume error', e); } }
+                } else {
+                    adMutedByAuto = false;
+                    console.log('[Ad] Player already muted before ad');
+                }
             } catch (err) { console.error('[Ad] handleAdStart error', err); }
         }
 
@@ -1528,8 +1531,8 @@
                 console.log('[Ad] Ad ended — restoring audio if changed by auto-mute');
                 if (!player) return;
                 if (adMutedByAuto) {
-                    if (typeof player.unMute === 'function') { player.unMute(); }
-                    else if (typeof player.setVolume === 'function' && prevVolume !== null) { player.setVolume(prevVolume); }
+                    if (typeof player.unMute === 'function') { try { player.unMute(); console.log('[Ad] player.unMute() called'); } catch(e) { console.error('[Ad] unMute error', e); } }
+                    else if (typeof player.setVolume === 'function' && prevVolume !== null) { try { player.setVolume(prevVolume); console.log('[Ad] Restored volume to', prevVolume); } catch(e) { console.error('[Ad] setVolume restore error', e); } }
                 }
             } catch (err) { console.error('[Ad] handleAdEnd error', err); }
             adMutedByAuto = false;
@@ -1540,11 +1543,15 @@
         function detectAdAndApply() {
             try {
                 if (!player || !currentSongInfo) return;
-                const vid = (player.getVideoData && player.getVideoData().video_id) || (player.getVideoData && player.getVideoData().video_id === undefined ? (player.getVideoData().video_id) : null);
-                const playingVid = vid || null;
-                const adNow = playingVid && currentSongInfo && (playingVid !== currentSongInfo.id);
-                if (adNow && !isAdPlaying) { isAdPlaying = true; handleAdStart(); }
-                else if (!adNow && isAdPlaying) { isAdPlaying = false; handleAdEnd(); }
+                let vd = null;
+                try { vd = (typeof player.getVideoData === 'function') ? player.getVideoData() : null; } catch(e) { vd = null; }
+                const playingVid = vd && (vd.video_id || vd.videoId || vd.id || null);
+                const currentVid = currentSongInfo && currentSongInfo.id ? String(currentSongInfo.id) : null;
+                const adNow = playingVid && currentVid && String(playingVid) !== String(currentVid);
+                // debug
+                // console.log('[Ad] detect: playingVid=', playingVid, 'currentVid=', currentVid, 'isAdPlaying=', isAdPlaying);
+                if (adNow && !isAdPlaying) { console.log('[Ad] Detected ad start (playingVid != currentSong) ', playingVid, currentVid); isAdPlaying = true; handleAdStart(); }
+                else if (!adNow && isAdPlaying) { console.log('[Ad] Detected ad end (returned to song)'); isAdPlaying = false; handleAdEnd(); }
             } catch (err) { console.error('[Ad] detect error', err); }
         }
 
