@@ -43,6 +43,13 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    transition: opacity 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+
+  /* Song change transition */
+  #card.transition-out {
+    opacity: 0.4;
+    transform: scale(0.98);
   }
 
   /* Glow blob behind thumbnail */
@@ -243,6 +250,11 @@
   /* Icon SVGs */
   .ctrl-btn svg { pointer-events: none; }
 
+  /* Smooth transform transition for song change */
+  #card {
+    transform: scale(1);
+  }
+
   /* Ripple on click */
   .ctrl-btn::after {
     content: '';
@@ -344,50 +356,75 @@
 
   // ── Apply song data ──────────────────────────────────────────────────────
   function showSong(data) {
-    currentId = data.id;
-    isPaused  = !!data.paused;
+    // Fade-out effect for song change
+    card.classList.add('transition-out');
+    
+    setTimeout(() => {
+      currentId = data.id;
+      isPaused  = !!data.paused;
 
-    const type = data.user === 'Auto' ? 'auto' : (data.user === 'Streamer' ? 'manual' : 'request');
-    card.style.setProperty('--glow', COLORS[type]);
+      const type = data.user === 'Auto' ? 'auto' : (data.user === 'Streamer' ? 'manual' : 'request');
+      card.style.setProperty('--glow', COLORS[type]);
+      
+      console.log('[MiniPlayer] track change', { 
+        id: data.id, 
+        title: data.title, 
+        author: data.author,
+        user: data.user,
+        paused: data.paused,
+        ts: Date.now()
+      });
 
-    // Thumbnail
-    const newSrc = 'https://i.ytimg.com/vi/' + data.id + '/mqdefault.jpg';
-    if (thumbEl.src !== newSrc) {
-      thumbEl.style.opacity = 0;
-      thumbEl.src = newSrc;
-      thumbEl.onload = () => { thumbEl.style.opacity = 1; };
-    }
-
-    // Title with auto-scroll
-    titleEl.classList.remove('scrolling');
-    titleEl.style.removeProperty('--sd');
-    titleEl.textContent  = data.title  || 'Unknown';
-    authorEl.textContent = data.author || '';
-    requestAnimationFrame(() => {
-      const overflow = titleEl.scrollWidth - titleEl.parentElement.clientWidth;
-      if (overflow > 10) {
-        titleEl.style.setProperty('--sd', '-' + (overflow + 20) + 'px');
-        titleEl.classList.add('scrolling');
+      // Thumbnail
+      const newSrc = 'https://i.ytimg.com/vi/' + data.id + '/mqdefault.jpg';
+      if (thumbEl.src !== newSrc) {
+        thumbEl.src = newSrc;
       }
-    });
 
-    updatePauseState(isPaused);
-    card.classList.remove('idle');
+      // Title with auto-scroll
+      titleEl.classList.remove('scrolling');
+      titleEl.style.removeProperty('--sd');
+      titleEl.textContent  = data.title  || 'Unknown';
+      authorEl.textContent = data.author || '';
+      requestAnimationFrame(() => {
+        const overflow = titleEl.scrollWidth - titleEl.parentElement.clientWidth;
+        if (overflow > 10) {
+          titleEl.style.setProperty('--sd', '-' + (overflow + 20) + 'px');
+          titleEl.classList.add('scrolling');
+        }
+      });
+
+      updatePauseState(isPaused);
+      card.classList.remove('idle');
+      
+      // Fade-in effect
+      card.classList.remove('transition-out');
+    }, 200);
   }
 
   function hideSong() {
     currentId = null;
     isPaused  = false;
-    thumbEl.style.opacity = 0;
-    thumbEl.src = '';
-    titleEl.classList.remove('scrolling');
-    titleEl.textContent  = '–';
-    authorEl.textContent = '';
-    statusLabel.textContent = 'Очікування...';
-    card.classList.add('idle');
-    card.classList.remove('paused');
-    iconPause.style.display = '';
-    iconPlay.style.display  = 'none';
+    
+    // Fade-out effect
+    card.classList.add('transition-out');
+    
+    setTimeout(() => {
+      thumbEl.style.opacity = 0;
+      thumbEl.src = '';
+      titleEl.classList.remove('scrolling');
+      titleEl.textContent  = '–';
+      authorEl.textContent = '';
+      statusLabel.textContent = 'Очікування...';
+      card.classList.add('idle');
+      card.classList.remove('paused');
+      iconPause.style.display = '';
+      iconPlay.style.display  = 'none';
+      console.log('[MiniPlayer] track stopped', { ts: Date.now() });
+      
+      // Fade-in to idle state
+      card.classList.remove('transition-out');
+    }, 200);
   }
 
   function updatePauseState(paused) {
@@ -398,11 +435,13 @@
       statusLabel.textContent = 'Пауза';
       iconPause.style.display = 'none';
       iconPlay.style.display  = '';
+      console.log('[MiniPlayer] state: PAUSED', { song: titleEl.textContent, ts: Date.now() });
     } else {
       card.classList.remove('paused');
       statusLabel.textContent = 'Грає зараз';
       iconPause.style.display = '';
       iconPlay.style.display  = 'none';
+      console.log('[MiniPlayer] state: PLAYING', { song: titleEl.textContent, ts: Date.now() });
     }
   }
 
@@ -421,12 +460,28 @@
         if (d.stopped || !d.id) hideSong();
         else showSong(d);
       }
-      else if (d.type === 'NOW_PAUSED')   { if (currentId) updatePauseState(true); }
-      else if (d.type === 'NOW_RESUMED')  { if (currentId) updatePauseState(false); }
-      else if (d.type === 'NOW_STOPPED')  { hideSong(); }
+      else if (d.type === 'NOW_PAUSED')   { 
+        if (currentId) {
+          updatePauseState(true);
+          console.log('[MiniPlayer] sync: NOW_PAUSED', { song: titleEl.textContent, ts: Date.now() });
+        }
+      }
+      else if (d.type === 'NOW_RESUMED')  { 
+        if (currentId) {
+          updatePauseState(false);
+          console.log('[MiniPlayer] sync: NOW_RESUMED', { song: titleEl.textContent, ts: Date.now() });
+        }
+      }
+      else if (d.type === 'NOW_STOPPED')  { 
+        hideSong();
+        console.log('[MiniPlayer] sync: NOW_STOPPED', { ts: Date.now() });
+      }
       else if (d.type === 'NOW_SYNC') {
         if (!currentId && d.id) showSong(d);
-        else if (d.id === currentId) updatePauseState(!!d.paused);
+        else if (d.id === currentId) {
+          updatePauseState(!!d.paused);
+          console.log('[MiniPlayer] sync: NOW_SYNC', { paused: !!d.paused, ts: Date.now() });
+        }
       }
       // legacy (no type field)
       else if (!d.type && d.id) { showSong(d); }
@@ -450,7 +505,17 @@
 
     // 2) localStorage + storage event (fallback)
     localStorage.setItem('ytm_mini_cmd', JSON.stringify(msg));
-
+    // Log command with context
+    const cmdLog = { cmd: type, song: titleEl.textContent, ts: Date.now() };
+    if (type === 'CMD_PAUSE') {
+      console.log('[MiniPlayer] cmd PAUSE', cmdLog);
+    } else if (type === 'CMD_PLAY') {
+      console.log('[MiniPlayer] cmd PLAY', cmdLog);
+    } else if (type === 'CMD_NEXT') {
+      console.log('[MiniPlayer] cmd NEXT', cmdLog);
+    } else if (type === 'CMD_PREV') {
+      console.log('[MiniPlayer] cmd PREV', cmdLog);
+    }
     // Optimistic UI для паузи
     if (type === 'CMD_PAUSE') updatePauseState(true);
     if (type === 'CMD_PLAY')  updatePauseState(false);
