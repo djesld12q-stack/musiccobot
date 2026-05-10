@@ -1497,12 +1497,64 @@
         }
 
         let syncInterval = null;
+        // Ad detection / auto-mute state
+        let isAdPlaying = false;
+        let adMutedByAuto = false;
+        let prevWasMuted = false;
+        let prevVolume = null;
+
+        function handleAdStart() {
+            try {
+                console.log('[Ad] Detected ad — applying auto-mute');
+                if (!player) return;
+                // remember previous mute/volume state
+                if (typeof player.isMuted === 'function') {
+                    prevWasMuted = player.isMuted();
+                } else {
+                    const v = (typeof player.getVolume === 'function') ? player.getVolume() : null;
+                    prevWasMuted = (v === 0);
+                    prevVolume = v;
+                }
+                // if not already muted, mute and mark
+                if (!prevWasMuted) {
+                    if (typeof player.mute === 'function') { player.mute(); adMutedByAuto = true; }
+                    else if (typeof player.setVolume === 'function') { prevVolume = player.getVolume(); player.setVolume(0); adMutedByAuto = true; }
+                } else adMutedByAuto = false;
+            } catch (err) { console.error('[Ad] handleAdStart error', err); }
+        }
+
+        function handleAdEnd() {
+            try {
+                console.log('[Ad] Ad ended — restoring audio if changed by auto-mute');
+                if (!player) return;
+                if (adMutedByAuto) {
+                    if (typeof player.unMute === 'function') { player.unMute(); }
+                    else if (typeof player.setVolume === 'function' && prevVolume !== null) { player.setVolume(prevVolume); }
+                }
+            } catch (err) { console.error('[Ad] handleAdEnd error', err); }
+            adMutedByAuto = false;
+            prevWasMuted = false;
+            prevVolume = null;
+        }
+
+        function detectAdAndApply() {
+            try {
+                if (!player || !currentSongInfo) return;
+                const vid = (player.getVideoData && player.getVideoData().video_id) || (player.getVideoData && player.getVideoData().video_id === undefined ? (player.getVideoData().video_id) : null);
+                const playingVid = vid || null;
+                const adNow = playingVid && currentSongInfo && (playingVid !== currentSongInfo.id);
+                if (adNow && !isAdPlaying) { isAdPlaying = true; handleAdStart(); }
+                else if (!adNow && isAdPlaying) { isAdPlaying = false; handleAdEnd(); }
+            } catch (err) { console.error('[Ad] detect error', err); }
+        }
 
         function updateNowPlayingOverlay(songInfo) {
             // Stop existing sync
             if (syncInterval) clearInterval(syncInterval);
             
             if (songInfo) {
+                // new song load — clear any ad state and restore audio if needed
+                isAdPlaying = false; handleAdEnd();
                 const payload = {
                     type: 'NOW_PLAYING',
                     id: songInfo.id,
@@ -1525,6 +1577,8 @@
                     if (currentSongInfo && player && player.getPlayerState() !== 5) {
                         const elapsed = Math.round(player.getCurrentTime() || 0);
                         const paused = player.getPlayerState() === 2;
+                        // detect ads and auto-mute if needed
+                        detectAdAndApply();
                         const syncPayload = {
                             type: 'NOW_SYNC',
                             id: currentSongInfo.id,
@@ -1534,6 +1588,7 @@
                             duration: currentSongInfo.duration || 0,
                             elapsed: elapsed,
                             paused: paused,
+                            ad: isAdPlaying,
                             ts: Date.now()
                         };
                         localStorage.setItem('ytm_now_playing', JSON.stringify(syncPayload));
@@ -1544,6 +1599,8 @@
                     }
                 }, 500);
             } else {
+                // restore audio if an ad-mute was active
+                handleAdEnd();
                 const payload = { type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() };
                 localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                 // Also send via WebSocket
@@ -1607,6 +1664,8 @@
                 document.getElementById('now-playing-meta').innerText = currentSongInfo.user === "Auto" ? `Auto` : `👤 ${currentSongInfo.user}`;
                 // Update overlay state
                 if (currentSongInfo) {
+                    // detect ads immediately on state change
+                    detectAdAndApply();
                     const elapsed = Math.round(player.getCurrentTime() || 0);
                     const payload = {
                         type: 'NOW_RESUMED',
@@ -1617,6 +1676,7 @@
                         duration: currentSongInfo.duration || 0,
                         elapsed: elapsed,
                         paused: false,
+                        ad: isAdPlaying,
                         ts: Date.now()
                     };
                     console.log('[Player] Broadcasting NOW_RESUMED');
@@ -1630,6 +1690,7 @@
                 // Paused
                 console.log('[Player] Paused - updating overlay');
                 if (currentSongInfo) {
+                    detectAdAndApply();
                     const elapsed = Math.round(player.getCurrentTime() || 0);
                     const payload = {
                         type: 'NOW_PAUSED',
@@ -1640,6 +1701,7 @@
                         duration: currentSongInfo.duration || 0,
                         elapsed: elapsed,
                         paused: true,
+                        ad: isAdPlaying,
                         ts: Date.now()
                     };
                     console.log('[Player] Broadcasting NOW_PAUSED', { title: currentSongInfo.title, elapsed });
