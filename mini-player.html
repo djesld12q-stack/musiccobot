@@ -302,6 +302,20 @@
   }
   .ctrl-btn.ripple::after { transform: scale(1.5); opacity: 0; }
 
+  /* Skip Ad button */
+  .skip-ad-btn {
+    background: #b22222;
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-weight: 800;
+    border: 2px solid rgba(0,0,0,0.2);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.45);
+    cursor: pointer;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+  .skip-ad-btn:hover { transform: translateY(-2px); }
+
   /* ── No-song state ── */
   #card.idle .eq-overlay { display: none; }
   #card.idle .dot { background: rgba(255,255,255,0.2); box-shadow: none; animation: none; }
@@ -385,6 +399,11 @@
 
     </div>
 
+    <!-- Skip Ad button (hidden unless an ad is playing) -->
+    <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+      <button id="btn-skip-ad" class="skip-ad-btn" style="display:none" title="Skip Ad" onclick="sendCmd('CMD_SKIP_AD', this)">skp ADS</button>
+    </div>
+
   </div>
 </div>
 
@@ -400,11 +419,14 @@
   const progressContainerEl = document.getElementById('progress-container');
   const timeCurEl = document.getElementById('time-current');
   const timeTotEl = document.getElementById('time-total');
+  const btnSkipAd = document.getElementById('btn-skip-ad');
 
   // ── State ────────────────────────────────────────────────────────────────
   let currentId   = null;
   let isPaused    = false;
   let lastTs      = 0;
+  // Ad flag (true when an ad is playing)
+  let adActive    = false;
   // Progress tracking (elapsed/duration + local tick)
   let songElapsed = 0;
   let songDuration = 0;
@@ -549,16 +571,19 @@
         if (d.stopped || !d.id) {
           console.log('[MiniPlayer] Poll: hiding song');
           hideSong();
+          adActive = false; try { updateAdUI(false); } catch(e) {}
         }
         else {
           console.log('[MiniPlayer] Poll: showing new song');
           showSong(d);
+          adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
         }
       }
       else if (d.type === 'NOW_PAUSED')   { 
         if (currentId) {
           console.log('[MiniPlayer] Poll: updating to PAUSED');
           updatePauseState(true);
+          adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
           console.log('[MiniPlayer] sync: NOW_PAUSED', { song: titleEl.textContent, ts: Date.now() });
         } else {
           console.warn('[MiniPlayer] Poll: NOW_PAUSED received but no currentId');
@@ -568,6 +593,7 @@
         if (currentId) {
           console.log('[MiniPlayer] Poll: updating to RESUMED');
           updatePauseState(false);
+          adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
           console.log('[MiniPlayer] sync: NOW_RESUMED', { song: titleEl.textContent, ts: Date.now() });
         } else {
           console.warn('[MiniPlayer] Poll: NOW_RESUMED received but no currentId');
@@ -576,6 +602,7 @@
       else if (d.type === 'NOW_STOPPED')  { 
         console.log('[MiniPlayer] Poll: stopping song');
         hideSong();
+        adActive = false; try { updateAdUI(false); } catch(e) {}
         console.log('[MiniPlayer] sync: NOW_STOPPED', { ts: Date.now() });
       }
       else if (d.type === 'NOW_SYNC') {
@@ -590,6 +617,9 @@
           songElapsed = (typeof d.elapsed !== 'undefined') ? d.elapsed : songElapsed;
           updatePauseState(!!d.paused);
           songStartTs = d.paused ? 0 : Date.now();
+          // update ad UI
+          adActive = !!d.ad;
+          try { updateAdUI(adActive); } catch(e) {}
           startProgressTicker();
           console.log('[MiniPlayer] sync: NOW_SYNC', { paused: !!d.paused, elapsed: songElapsed, duration: songDuration, ts: Date.now() });
         }
@@ -625,21 +655,35 @@
 
         // Handle now-playing events directly for instant UI updates
         if (d.type === 'NOW_PLAYING') {
-          if (d.stopped || !d.id) hideSong();
-          else showSong(d);
+          if (d.stopped || !d.id) {
+            hideSong();
+            adActive = false; try { updateAdUI(false); } catch(e) {}
+          }
+          else {
+            showSong(d);
+            adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
+          }
         } else if (d.type === 'NOW_STOPPED') {
           hideSong();
+          adActive = false; try { updateAdUI(false); } catch(e) {}
         } else if (d.type === 'NOW_PAUSED') {
           updatePauseState(true);
+          adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
         } else if (d.type === 'NOW_RESUMED') {
           updatePauseState(false);
+          adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
         } else if (d.type === 'NOW_SYNC') {
-          if (!currentId && d.id) showSong(d);
+          if (!currentId && d.id) {
+            showSong(d);
+            adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
+          }
           else if (d.id === currentId) {
             songDuration = d.duration || songDuration || 0;
             songElapsed = (typeof d.elapsed !== 'undefined') ? d.elapsed : songElapsed;
             updatePauseState(!!d.paused);
             songStartTs = d.paused ? 0 : Date.now();
+            // update ad UI
+            adActive = !!d.ad; try { updateAdUI(adActive); } catch(e) {}
             startProgressTicker();
           }
         }
@@ -758,6 +802,17 @@
 
   function stopProgressTicker() {
     if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = null; }
+  }
+
+  // Update Skip-Ad UI
+  function updateAdUI(flag) {
+    try {
+      adActive = !!flag;
+      if (!btnSkipAd) return;
+      btnSkipAd.style.display = adActive ? 'inline-flex' : 'none';
+      btnSkipAd.disabled = !adActive;
+      console.log('[MiniPlayer] updateAdUI:', adActive);
+    } catch(e) { console.error('[MiniPlayer] updateAdUI error', e); }
   }
 
   // Click / tap to seek on progress bar

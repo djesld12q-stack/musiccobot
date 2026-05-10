@@ -1502,6 +1502,8 @@
         let adMutedByAuto = false;
         let prevWasMuted = false;
         let prevVolume = null;
+        // Last known song elapsed before an ad started (used for skip-ad reload)
+        let lastSongElapsedBeforeAd = 0;
 
         function handleAdStart() {
             try {
@@ -1600,6 +1602,8 @@
                             ad: isAdPlaying,
                             ts: Date.now()
                         };
+                        // remember last known song elapsed while not in an ad
+                        try { if (!isAdPlaying) lastSongElapsedBeforeAd = elapsed; } catch(e) {}
                         localStorage.setItem('ytm_now_playing', JSON.stringify(syncPayload));
                         // Also send via WebSocket
                         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -2149,6 +2153,41 @@
                             console.warn('[MiniPlayer] SEEK_TO: invalid payload', cmd.payload);
                         }
                     } catch(err) { console.error('[MiniPlayer] SEEK_TO error', err); }
+                }
+                else if (cmd.type === 'CMD_SKIP_AD') {
+                    console.log('[MiniPlayer] CMD_SKIP_AD received');
+                    try {
+                        if (!currentSongInfo) { console.warn('[MiniPlayer] CMD_SKIP_AD: no current song'); return; }
+                        if (!isAdPlaying) { console.warn('[MiniPlayer] CMD_SKIP_AD: no ad playing'); return; }
+                        const startAt = lastSongElapsedBeforeAd || 0;
+                        console.log('[Ad] Skip requested — reloading song at', startAt);
+                        if (player && typeof player.loadVideoById === 'function') {
+                            try {
+                                player.loadVideoById(currentSongInfo.id, startAt);
+                                isAdPlaying = false;
+                                handleAdEnd();
+                                const payload = {
+                                    type: 'NOW_RESUMED',
+                                    id: currentSongInfo.id,
+                                    title: currentSongInfo.title,
+                                    author: currentSongInfo.author,
+                                    user: currentSongInfo.user,
+                                    duration: currentSongInfo.duration || 0,
+                                    elapsed: startAt,
+                                    paused: false,
+                                    ad: false,
+                                    ts: Date.now()
+                                };
+                                localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) {}
+                                if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
+                            } catch (err) { console.error('[Ad] CMD_SKIP_AD load error', err); }
+                        } else if (player && typeof player.seekTo === 'function') {
+                            try { player.seekTo(startAt, true); handleAdEnd(); } catch(e) { console.error('[Ad] CMD_SKIP_AD seek error', e); }
+                        } else {
+                            console.warn('[MiniPlayer] CMD_SKIP_AD: no suitable player API');
+                        }
+                    } catch (err) { console.error('[MiniPlayer] CMD_SKIP_AD error', err); }
                 }
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
