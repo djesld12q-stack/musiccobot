@@ -33,10 +33,6 @@
     let currentAudioId = null;
     let lastUpdateTs = 0;
     let pendingAudioAction = null;
-    // Ad-auto-mute state for audio-only player
-    let audioAdPlaying = false;
-    let audioAdMutedByAuto = false;
-    let audioPrevVolume = null;
 
     function log(message) {
       console.log('[YTM Audio Sync] ' + message);
@@ -198,30 +194,6 @@
       }
       else if (data.type === 'NOW_SYNC') {
         if (data.id === currentAudioId) {
-          // handle ad auto-mute if flagged by main player
-          try {
-            if (data.ad && !audioAdPlaying) {
-              audioAdPlaying = true;
-              // remember prev volume and mute
-              if (audioPlayer && typeof audioPlayer.isMuted === 'function') {
-                try { audioAdMutedByAuto = !!audioPlayer.isMuted(); } catch(e) { audioAdMutedByAuto = false; }
-              }
-              if (!audioAdMutedByAuto) {
-                try { if (typeof audioPlayer.mute === 'function') { audioPlayer.mute(); audioAdMutedByAuto = true; console.log('[AudioSync] Ad detected — muted audioPlayer'); } else if (typeof audioPlayer.setVolume === 'function') { audioPrevVolume = audioPlayer.getVolume(); audioPlayer.setVolume(0); audioAdMutedByAuto = true; console.log('[AudioSync] Ad detected — setVolume(0)'); } } catch(e){console.error('[AudioSync] mute error',e);} 
-              }
-            } else if (!data.ad && audioAdPlaying) {
-              // ad ended — restore
-              try {
-                if (audioAdMutedByAuto) {
-                  if (typeof audioPlayer.unMute === 'function') { audioPlayer.unMute(); console.log('[AudioSync] Ad ended — unMute called'); }
-                  else if (typeof audioPlayer.setVolume === 'function' && audioPrevVolume !== null) { audioPlayer.setVolume(audioPrevVolume); console.log('[AudioSync] Ad ended — restored volume', audioPrevVolume); }
-                }
-              } catch(e){console.error('[AudioSync] unmute error', e);} 
-              audioAdPlaying = false; audioAdMutedByAuto = false; audioPrevVolume = null;
-            }
-
-          } catch(e) { console.error('[AudioSync] ad handling error', e); }
-
           audioSeekIfDrifted(data.elapsed || 0, 3);
           if (data.paused) {
             audioPause();

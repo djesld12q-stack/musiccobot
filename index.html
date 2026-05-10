@@ -896,13 +896,7 @@
         let currentSongInfo = null; 
         let titleCache = {};    
         let dragSourceIndex = null;
-        let isSrEnabled = false;
-        
-        // ── Seeking state for mini-player ────────────────────────────────────
-        let isSeekingActive = false;
-        let seekDirection = null;   // 'forward' or 'backward'
-        let seekInterval = null;
-        const SEEK_SPEED = 0.2;     // секунд за кожен цикл (~200ms × 0.2 = 40ms per frame) 
+        let isSrEnabled = false; 
 
         // =========================================================================
         // DEFAULT SONG FILTERS — loaded on first launch if no filters saved yet
@@ -1497,73 +1491,12 @@
         }
 
         let syncInterval = null;
-        // Ad detection / auto-mute state
-        let isAdPlaying = false;
-        let adMutedByAuto = false;
-        let prevWasMuted = false;
-        let prevVolume = null;
-        // Last known song elapsed before an ad started (used for skip-ad reload)
-        let lastSongElapsedBeforeAd = 0;
-
-        function handleAdStart() {
-            try {
-                console.log('[Ad] Detected ad — applying auto-mute');
-                if (!player) return;
-                // remember previous mute/volume state
-                if (typeof player.isMuted === 'function') {
-                    try { prevWasMuted = !!player.isMuted(); } catch(e) { prevWasMuted = false; }
-                } else {
-                    const v = (typeof player.getVolume === 'function') ? player.getVolume() : null;
-                    prevWasMuted = (v === 0);
-                    prevVolume = v;
-                }
-                // if not already muted, mute and mark
-                if (!prevWasMuted) {
-                    if (typeof player.mute === 'function') { try { player.mute(); adMutedByAuto = true; console.log('[Ad] player.mute() called'); } catch(e) { console.error('[Ad] mute error', e); } }
-                    else if (typeof player.setVolume === 'function') { try { prevVolume = player.getVolume(); player.setVolume(0); adMutedByAuto = true; console.log('[Ad] setVolume(0) called'); } catch(e) { console.error('[Ad] setVolume error', e); } }
-                } else {
-                    adMutedByAuto = false;
-                    console.log('[Ad] Player already muted before ad');
-                }
-            } catch (err) { console.error('[Ad] handleAdStart error', err); }
-        }
-
-        function handleAdEnd() {
-            try {
-                console.log('[Ad] Ad ended — restoring audio if changed by auto-mute');
-                if (!player) return;
-                if (adMutedByAuto) {
-                    if (typeof player.unMute === 'function') { try { player.unMute(); console.log('[Ad] player.unMute() called'); } catch(e) { console.error('[Ad] unMute error', e); } }
-                    else if (typeof player.setVolume === 'function' && prevVolume !== null) { try { player.setVolume(prevVolume); console.log('[Ad] Restored volume to', prevVolume); } catch(e) { console.error('[Ad] setVolume restore error', e); } }
-                }
-            } catch (err) { console.error('[Ad] handleAdEnd error', err); }
-            adMutedByAuto = false;
-            prevWasMuted = false;
-            prevVolume = null;
-        }
-
-        function detectAdAndApply() {
-            try {
-                if (!player || !currentSongInfo) return;
-                let vd = null;
-                try { vd = (typeof player.getVideoData === 'function') ? player.getVideoData() : null; } catch(e) { vd = null; }
-                const playingVid = vd && (vd.video_id || vd.videoId || vd.id || null);
-                const currentVid = currentSongInfo && currentSongInfo.id ? String(currentSongInfo.id) : null;
-                const adNow = playingVid && currentVid && String(playingVid) !== String(currentVid);
-                // debug
-                // console.log('[Ad] detect: playingVid=', playingVid, 'currentVid=', currentVid, 'isAdPlaying=', isAdPlaying);
-                if (adNow && !isAdPlaying) { console.log('[Ad] Detected ad start (playingVid != currentSong) ', playingVid, currentVid); isAdPlaying = true; handleAdStart(); }
-                else if (!adNow && isAdPlaying) { console.log('[Ad] Detected ad end (returned to song)'); isAdPlaying = false; handleAdEnd(); }
-            } catch (err) { console.error('[Ad] detect error', err); }
-        }
 
         function updateNowPlayingOverlay(songInfo) {
             // Stop existing sync
             if (syncInterval) clearInterval(syncInterval);
             
             if (songInfo) {
-                // new song load — clear any ad state and restore audio if needed
-                isAdPlaying = false; handleAdEnd();
                 const payload = {
                     type: 'NOW_PLAYING',
                     id: songInfo.id,
@@ -1581,15 +1514,11 @@
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PLAYING", data: payload, id: "NowPlaying" }));
                 }
-                // Also broadcast via BroadcastChannel for instant updates to mini/overlay pages
-                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
                 // Start periodic sync every 500ms
                 syncInterval = setInterval(() => {
                     if (currentSongInfo && player && player.getPlayerState() !== 5) {
                         const elapsed = Math.round(player.getCurrentTime() || 0);
                         const paused = player.getPlayerState() === 2;
-                        // detect ads and auto-mute if needed
-                        detectAdAndApply();
                         const syncPayload = {
                             type: 'NOW_SYNC',
                             id: currentSongInfo.id,
@@ -1599,31 +1528,22 @@
                             duration: currentSongInfo.duration || 0,
                             elapsed: elapsed,
                             paused: paused,
-                            ad: isAdPlaying,
                             ts: Date.now()
                         };
-                        // remember last known song elapsed while not in an ad
-                        try { if (!isAdPlaying) lastSongElapsedBeforeAd = elapsed; } catch(e) {}
                         localStorage.setItem('ytm_now_playing', JSON.stringify(syncPayload));
                         // Also send via WebSocket
                         if (ws && ws.readyState === WebSocket.OPEN) {
                             ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_SYNC", data: syncPayload, id: "SongSync" }));
                         }
-                        // Also broadcast via BroadcastChannel for instant updates to mini/overlay pages
-                        try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(syncPayload); bcOut.close(); } catch(e) { }
                     }
                 }, 500);
             } else {
-                // restore audio if an ad-mute was active
-                handleAdEnd();
                 const payload = { type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() };
                 localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                 // Also send via WebSocket
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
                 }
-                // Also broadcast via BroadcastChannel for instant updates to mini/overlay pages
-                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
             }
         }
 
@@ -1665,23 +1585,16 @@
 
         function onPlayerStateChange(e) {
             // 0 = ENDED, 1 = PLAYING, 2 = PAUSED, 5 = CUED
-            const stateNames = ['ENDED', 'PLAYING', 'PAUSED', 'UNKNOWN', 'UNKNOWN', 'CUED'];
-            const stateName = stateNames[e.data] || 'UNKNOWN';
-            console.log('[Player] State change:', stateName, '(', e.data, ')');
-
             if (e.data === 0) {
                 // Song ended
-                console.log('[Player] Song ended, playing next');
                 playNext();
-            } else if (e.data === 1) {
+            }
+            else if (e.data === 1) {
                 // Playing
-                console.log('[Player] Playing - updating overlay');
-                document.getElementById('now-playing-title').innerText = currentSongInfo ? currentSongInfo.title : '';
-                document.getElementById('now-playing-meta').innerText = currentSongInfo ? (currentSongInfo.user === "Auto" ? `Auto` : `👤 ${currentSongInfo.user}`) : '';
-
+                document.getElementById('now-playing-title').innerText = currentSongInfo.title;
+                document.getElementById('now-playing-meta').innerText = currentSongInfo.user === "Auto" ? `Auto` : `👤 ${currentSongInfo.user}`;
+                // Update overlay state
                 if (currentSongInfo) {
-                    // detect ads immediately on state change
-                    detectAdAndApply();
                     const elapsed = Math.round(player.getCurrentTime() || 0);
                     const payload = {
                         type: 'NOW_RESUMED',
@@ -1692,25 +1605,17 @@
                         duration: currentSongInfo.duration || 0,
                         elapsed: elapsed,
                         paused: false,
-                        ad: isAdPlaying,
                         ts: Date.now()
                     };
-                    console.log('[Player] Broadcasting NOW_RESUMED');
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
                     }
-                    try {
-                        const bcOut = new BroadcastChannel('musiccobot_ctrl');
-                        bcOut.postMessage(payload);
-                        bcOut.close();
-                    } catch (e) {}
                 }
-            } else if (e.data === 2) {
+            }
+            else if (e.data === 2) {
                 // Paused
-                console.log('[Player] Paused - updating overlay');
                 if (currentSongInfo) {
-                    detectAdAndApply();
                     const elapsed = Math.round(player.getCurrentTime() || 0);
                     const payload = {
                         type: 'NOW_PAUSED',
@@ -1721,21 +1626,12 @@
                         duration: currentSongInfo.duration || 0,
                         elapsed: elapsed,
                         paused: true,
-                        ad: isAdPlaying,
                         ts: Date.now()
                     };
-                    console.log('[Player] Broadcasting NOW_PAUSED', { title: currentSongInfo.title, elapsed });
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_PAUSED", data: payload, id: "SongPaused" }));
                     }
-                    try {
-                        const bcOut = new BroadcastChannel('musiccobot_ctrl');
-                        bcOut.postMessage(payload);
-                        bcOut.close();
-                    } catch (e) {}
-                } else {
-                    console.warn('[Player] Paused but no currentSongInfo');
                 }
             }
         }
@@ -1762,7 +1658,6 @@
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_STOPPED", data: payload, id: "NowStopped" }));
             }
-            try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) { }
         }
 
         function playFromChat(user) {
@@ -1786,9 +1681,7 @@
             if (currentSongInfo && player.getPlayerState() !== 5) {
                 player.stopVideo();
                 document.getElementById('now-playing-title').innerText = "STOP";
-                const __stopPayload = { type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() };
-                localStorage.setItem('ytm_now_playing', JSON.stringify(__stopPayload));
-                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(__stopPayload); bcOut.close(); } catch(e) { }
+                localStorage.setItem('ytm_now_playing', JSON.stringify({ type: 'NOW_STOPPED', id: null, stopped: true, ts: Date.now() }));
                 sendChatMessage(t('msg_stopped', {user: user}));
             } else { sendChatMessage(t('msg_nothing_playing', {user: user})); }
         }
@@ -2082,148 +1975,11 @@
             try {
                 if (!cmd || !cmd.type) return;
                 if (cmd.ts && Date.now() - cmd.ts > 3000) return;
-                console.log('[MiniPlayer] cmd:', cmd.type, { 
-                    playerExists: !!player, 
-                    playerState: player ? player.getPlayerState() : 'N/A',
-                    currentSong: currentSongInfo ? currentSongInfo.title : 'none'
-                });
+                console.log('[MiniPlayer] cmd:', cmd.type);
                 if      (cmd.type === 'CMD_PREV')  prevSong();
                 else if (cmd.type === 'CMD_NEXT')  skipSong();
-                else if (cmd.type === 'CMD_PAUSE') {
-                    if (player) {
-                        console.log('[MiniPlayer] Executing PAUSE command');
-                        player.pauseVideo();
-                    } else {
-                        console.warn('[MiniPlayer] PAUSE: player not ready');
-                    }
-                }
-                else if (cmd.type === 'CMD_PLAY') {
-                    if (player) {
-                        console.log('[MiniPlayer] Executing PLAY command');
-                        player.playVideo();
-                    } else {
-                        console.warn('[MiniPlayer] PLAY: player not ready');
-                    }
-                }
-                else if (cmd.type === 'CMD_SEEK_START_FORWARD') {
-                    console.log('[MiniPlayer] Start seeking FORWARD');
-                    if (player) {
-                        isSeekingActive = true;
-                        seekDirection = 'forward';
-                        
-                        if (seekInterval) clearInterval(seekInterval);
-                        seekInterval = setInterval(() => {
-                            if (!isSeekingActive || seekDirection !== 'forward') return;
-                            const currentTime = player.getCurrentTime() || 0;
-                            const newTime = currentTime + SEEK_SPEED;
-                            player.seekTo(newTime, true);
-                        }, 50); // Плавна перемотка кожні 50ms
-                    }
-                }
-                else if (cmd.type === 'CMD_SEEK_START_BACKWARD') {
-                    console.log('[MiniPlayer] Start seeking BACKWARD');
-                    if (player) {
-                        isSeekingActive = true;
-                        seekDirection = 'backward';
-                        
-                        if (seekInterval) clearInterval(seekInterval);
-                        seekInterval = setInterval(() => {
-                            if (!isSeekingActive || seekDirection !== 'backward') return;
-                            const currentTime = player.getCurrentTime() || 0;
-                            const newTime = Math.max(0, currentTime - SEEK_SPEED);
-                            player.seekTo(newTime, true);
-                        }, 50); // Плавна перемотка кожні 50ms
-                    }
-                }
-                else if (cmd.type === 'CMD_SEEK_STOP') {
-                    console.log('[MiniPlayer] Stop seeking');
-                    isSeekingActive = false;
-                    seekDirection = null;
-                    if (seekInterval) {
-                        clearInterval(seekInterval);
-                        seekInterval = null;
-                    }
-                }
-                else if (cmd.type === 'CMD_SEEK_TO') {
-                    console.log('[MiniPlayer] SEEK_TO', cmd.payload);
-                    try {
-                        if (player && cmd.payload && typeof cmd.payload.time !== 'undefined') {
-                            const t = parseFloat(cmd.payload.time);
-                            if (!isNaN(t)) {
-                                const clamped = Math.max(0, Math.min(t, (currentSongInfo && currentSongInfo.duration) ? currentSongInfo.duration : t));
-                                player.seekTo(clamped, true);
-                            }
-                        } else {
-                            console.warn('[MiniPlayer] SEEK_TO: invalid payload', cmd.payload);
-                        }
-                    } catch(err) { console.error('[MiniPlayer] SEEK_TO error', err); }
-                }
-                else if (cmd.type === 'CMD_SKIP_AD') {
-                    console.log('[MiniPlayer] CMD_SKIP_AD received');
-                    try {
-                        if (!currentSongInfo) { console.warn('[MiniPlayer] CMD_SKIP_AD: no current song'); return; }
-                        const startAt = lastSongElapsedBeforeAd || 0;
-
-                        // First try: click native YouTube skip button in this document (works only if present here)
-                        const skipSelectors = ['.ytp-ad-skip-button.ytp-button', '.ytp-ad-skip-button-modern', '.ytp-ad-skip-button'];
-                        let clicked = false;
-                        for (let sel of skipSelectors) {
-                            try {
-                                const btn = document.querySelector(sel);
-                                if (btn) {
-                                    btn.click();
-                                    clicked = true;
-                                    console.log('[Ad] Clicked local YouTube skip button (selector):', sel);
-                                    break;
-                                }
-                            } catch (e) { console.warn('[Ad] skip button click error for', sel, e); }
-                        }
-
-                        // Second try: best-effort postMessage to iframe (may be ignored / cross-origin)
-                        if (!clicked && player && typeof player.getIframe === 'function') {
-                            try {
-                                const iframe = player.getIframe();
-                                if (iframe && iframe.contentWindow) {
-                                    try {
-                                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'skipAd' }), '*');
-                                        console.log('[Ad] Posted skipAd message to iframe (best-effort)');
-                                    } catch (e) { console.warn('[Ad] postMessage to iframe failed', e); }
-                                }
-                            } catch (e) { console.warn('[Ad] iframe access error', e); }
-                        }
-
-                        // If we already clicked the skip button, stop — otherwise fallback to reload/seek
-                        if (clicked) return;
-
-                        console.log('[Ad] Skip requested — fallback reloading/seeking song at', startAt);
-                        if (player && typeof player.loadVideoById === 'function') {
-                            try {
-                                player.loadVideoById(currentSongInfo.id, startAt);
-                                isAdPlaying = false;
-                                handleAdEnd();
-                                const payload = {
-                                    type: 'NOW_RESUMED',
-                                    id: currentSongInfo.id,
-                                    title: currentSongInfo.title,
-                                    author: currentSongInfo.author,
-                                    user: currentSongInfo.user,
-                                    duration: currentSongInfo.duration || 0,
-                                    elapsed: startAt,
-                                    paused: false,
-                                    ad: false,
-                                    ts: Date.now()
-                                };
-                                localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
-                                try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) {}
-                                if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
-                            } catch (err) { console.error('[Ad] CMD_SKIP_AD load error', err); }
-                        } else if (player && typeof player.seekTo === 'function') {
-                            try { player.seekTo(startAt, true); handleAdEnd(); } catch(e) { console.error('[Ad] CMD_SKIP_AD seek error', e); }
-                        } else {
-                            console.warn('[MiniPlayer] CMD_SKIP_AD: no suitable player API');
-                        }
-                    } catch (err) { console.error('[MiniPlayer] CMD_SKIP_AD error', err); }
-                }
+                else if (cmd.type === 'CMD_PAUSE' && player && currentSongInfo) player.pauseVideo();
+                else if (cmd.type === 'CMD_PLAY'  && player && currentSongInfo) player.playVideo();
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
         try {
