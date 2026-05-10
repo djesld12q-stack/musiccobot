@@ -437,19 +437,24 @@
   setInterval(poll, 200);
   setTimeout(poll, 300);
 
+  // ── BroadcastChannel — прямий зв'язок між вкладками ─────────────────────
+  let bc = null;
+  try { bc = new BroadcastChannel('musiccobot_ctrl'); } catch(e) {}
+
   // ── Send commands to index.html ──────────────────────────────────────────
   function sendCmd(type, btn) {
-    localStorage.setItem('ytm_mini_cmd', JSON.stringify({ type, ts: Date.now() }));
+    const msg = { type, ts: Date.now() };
 
-    // Optimistic UI for toggle
-    if (type === 'CMD_TOGGLE') {
-      const willBePaused = !isPaused;
-      updatePauseState(willBePaused);
-      const payload = { type: willBePaused ? 'NOW_PAUSED' : 'NOW_RESUMED', ts: Date.now() };
-      localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
-    }
+    // 1) BroadcastChannel (миттєво, без polling)
+    if (bc) bc.postMessage(msg);
 
-    // Ripple effect
+    // 2) localStorage + storage event (fallback)
+    localStorage.setItem('ytm_mini_cmd', JSON.stringify(msg));
+
+    // Optimistic UI для паузи
+    if (type === 'CMD_TOGGLE') updatePauseState(!isPaused);
+
+    // Ripple
     if (btn) {
       btn.classList.add('ripple');
       setTimeout(() => btn.classList.remove('ripple'), 350);

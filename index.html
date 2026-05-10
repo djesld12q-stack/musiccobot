@@ -1970,26 +1970,27 @@
             };
         }
 
-        // ── Mini Player command listener ──────────────────────────────────────
-        // Handles commands written to localStorage by mini-player.html
-        (function() {
-            let lastMiniCmdTs = 0;
-            setInterval(function() {
-                try {
-                    const raw = localStorage.getItem('ytm_mini_cmd');
-                    if (!raw) return;
-                    const cmd = JSON.parse(raw);
-                    if (!cmd.ts || cmd.ts === lastMiniCmdTs) return;
-                    if (Date.now() - cmd.ts > 2000) return;
-                    lastMiniCmdTs = cmd.ts;
-                    localStorage.removeItem('ytm_mini_cmd');
-                    if      (cmd.type === 'CMD_PREV')   prevSong();
-                    else if (cmd.type === 'CMD_TOGGLE') togglePlay();
-                    else if (cmd.type === 'CMD_NEXT')   skipSong();
-                } catch(e) {}
-            }, 200);
-        })();
-        // ── End Mini Player patch ──────────────────────────────────────────────
+        // ── Mini Player command listener ─────────────────────────────────────
+        function handleMiniCmd(cmd) {
+            try {
+                if (!cmd || !cmd.type) return;
+                if (cmd.ts && Date.now() - cmd.ts > 3000) return;
+                console.log('[MiniPlayer] cmd:', cmd.type);
+                if      (cmd.type === 'CMD_PREV')   prevSong();
+                else if (cmd.type === 'CMD_TOGGLE') togglePlay();
+                else if (cmd.type === 'CMD_NEXT')   skipSong();
+            } catch(e) { console.error('[MiniPlayer]', e); }
+        }
+        try {
+            const bc = new BroadcastChannel('musiccobot_ctrl');
+            bc.onmessage = function(e) { handleMiniCmd(e.data); };
+            console.log('[MiniPlayer] BroadcastChannel ready');
+        } catch(e) { console.warn('[MiniPlayer] BroadcastChannel not supported'); }
+        window.addEventListener('storage', function(e) {
+            if (e.key !== 'ytm_mini_cmd' || !e.newValue) return;
+            try { handleMiniCmd(JSON.parse(e.newValue)); } catch(ex) {}
+        });
+        // ── End Mini Player patch ───────────────────────────────────────────
     </script>
 </body>
 </html>
