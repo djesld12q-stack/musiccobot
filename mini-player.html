@@ -813,16 +813,15 @@
     if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = null; }
   }
 
-  // Update Skip-Ad UI (supports debug override via localStorage 'ytm_debug_skip_visible' = '1')
   function updateAdUI(flag) {
     try {
       adActive = !!flag;
       if (!btnSkipAd) return;
-      const debugForce = localStorage.getItem('ytm_debug_skip_visible') === '1';
-      const visible = adActive || debugForce;
-      btnSkipAd.style.display = visible ? 'inline-flex' : 'none';
-      btnSkipAd.disabled = !visible;
-      console.log('[MiniPlayer] updateAdUI:', { adActive, debugForce, visible });
+      // Always keep Skip-Ad button visible (match Prev/Next visibility).
+      btnSkipAd.style.display = 'inline-flex';
+      // Only toggle disabled state when no ad is active so the button appears inert.
+      btnSkipAd.disabled = !adActive;
+      console.log('[MiniPlayer] updateAdUI:', { adActive });
     } catch(e) { console.error('[MiniPlayer] updateAdUI error', e); }
   }
 
