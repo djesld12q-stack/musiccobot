@@ -1586,6 +1586,8 @@
         function onPlayerStateChange(e) {
             // 0 = ENDED, 1 = PLAYING, 2 = PAUSED, 5 = CUED
             if (e.data === 0) {
+                            // BroadcastChannel notify (instant update for mini-player / overlays)
+                            try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) {}
                 // Song ended
                 playNext();
             }
@@ -1608,6 +1610,8 @@
                         ts: Date.now()
                     };
                     localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                                    // BroadcastChannel notify for sync
+                                    try { const bcOut2 = new BroadcastChannel('musiccobot_ctrl'); bcOut2.postMessage(syncPayload); bcOut2.close(); } catch(e){}
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ request: "BroadcastEvent", name: "NOW_RESUMED", data: payload, id: "SongResumed" }));
                     }
@@ -1617,6 +1621,8 @@
                 // Paused
                 if (currentSongInfo) {
                     const elapsed = Math.round(player.getCurrentTime() || 0);
+                            // BroadcastChannel notify (stop)
+                            try { const bcOut = new BroadcastChannel('musiccobot_ctrl'); bcOut.postMessage(payload); bcOut.close(); } catch(e) {}
                     const payload = {
                         type: 'NOW_PAUSED',
                         id: currentSongInfo.id,
