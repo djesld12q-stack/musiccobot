@@ -1638,7 +1638,63 @@
 
         function skipSong() { log("⏭️ SKIP", "warn"); playNext(); }
 
-        
+        // ── Ad-mute: глушимо звук поки грає реклама ─────────────────────────
+        (function setupAdMute() {
+            let adMuted      = false;   // чи зараз заглушено через рекламу
+            let savedVolume  = 100;     // гучність до реклами
+            const CHECK_MS   = 700;     // інтервал перевірки
+
+            function isAdPlaying() {
+                if (!player || typeof player.getVideoUrl !== 'function') return false;
+
+                // Метод 1: URL містить /ads/ або youtube.com/pagead
+                try {
+                    const url = player.getVideoUrl();
+                    if (url && (url.includes('/pagead/') || url.includes('&ad_type='))) return true;
+                } catch(e) {}
+
+                // Метод 2: DOM — клас .ad-showing або .ytp-ad-player-overlay
+                const iframe = document.querySelector('#player iframe, iframe#player');
+                if (iframe) {
+                    try {
+                        const doc = iframe.contentDocument || iframe.contentWindow.document;
+                        if (doc && doc.querySelector('.ad-showing, .ytp-ad-player-overlay-instream-info')) {
+                            return true;
+                        }
+                    } catch(e) {} // cross-origin — ігноруємо
+                }
+
+                // Метод 3: getVideoData — якщо video_id відрізняється від поточного
+                try {
+                    const vd = player.getVideoData();
+                    if (vd && currentSongInfo && vd.video_id && vd.video_id !== currentSongInfo.id) {
+                        return true;
+                    }
+                } catch(e) {}
+
+                return false;
+            }
+
+            setInterval(() => {
+                if (!player || typeof player.isMuted !== 'function') return;
+                const adNow = isAdPlaying();
+
+                if (adNow && !adMuted) {
+                    // Реклама почалась — глушимо
+                    try { savedVolume = player.getVolume(); } catch(e) { savedVolume = 100; }
+                    player.mute();
+                    adMuted = true;
+                    log('🔇 Реклама — звук заглушено', 'warn');
+                }
+                else if (!adNow && adMuted) {
+                    // Реклама закінчилась — відновлюємо
+                    player.unMute();
+                    try { player.setVolume(savedVolume); } catch(e) {}
+                    adMuted = false;
+                    log('🔊 Реклама закінчилась — звук відновлено', 'warn');
+                }
+            }, CHECK_MS);
+        })();
         
         function togglePlay() { 
             if (!currentSongInfo) {
