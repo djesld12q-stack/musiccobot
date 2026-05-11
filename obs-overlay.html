@@ -432,6 +432,7 @@
 
   // ── localStorage Polling ──────────────────────────────────────────────────
   let lastUpdate = 0;
+  let lastNowPlayingTs = 0; // timestamp останнього NOW_PLAYING — захист від хибних пауз
   let updateCheckInterval = null;
 
   function log(msg) {
@@ -457,13 +458,18 @@
           hideSong();
         } else {
           log('Showing song: ' + data.title);
+          lastNowPlayingTs = data.ts || Date.now(); // запам'ятовуємо час NOW_PLAYING
           showSong(data);
         }
       }
       else if (data.type === 'NOW_PAUSED') {
-        if (currentSongId) {
+        // Ігноруємо NOW_PAUSED якщо він старший за останній NOW_PLAYING
+        // (це захист від паузи при переключенні пісень)
+        if (currentSongId && data.ts >= (lastNowPlayingTs || 0)) {
           log('Setting paused state');
           setPausedState(true);
+        } else if (currentSongId) {
+          log('⚠️ Ignoring stale NOW_PAUSED (ts:' + data.ts + ' < nowPlayingTs:' + lastNowPlayingTs + ')');
         }
       }
       else if (data.type === 'NOW_RESUMED') {
@@ -479,7 +485,14 @@
       }
       else if (data.type === 'NOW_SYNC') {
         if (!currentSongId && data.id) showSong(data);
-        else if (data.id === currentSongId) setPausedState(!!data.paused);
+        // NOW_SYNC з paused:true ігноруємо якщо він прийшов одразу після зміни пісні
+        else if (data.id === currentSongId) {
+          if (data.paused && data.ts < (lastNowPlayingTs || 0) + 2000) {
+            log('⚠️ Ignoring NOW_SYNC paused=true right after song change');
+          } else {
+            setPausedState(!!data.paused);
+          }
+        }
       }
       else if (data.type === 'AD_MUTE') {
         if (audioPlayer && audioReady && !obsAdMuted) {
@@ -596,13 +609,16 @@
               hideSong();
             } else {
               log('▶️ Showing song: ' + inner.title);
+              lastNowPlayingTs = inner.ts || Date.now();
               showSong(inner);
             }
           }
           else if (inner.type === 'NOW_PAUSED') {
-            if (currentSongId) {
+            if (currentSongId && (inner.ts || 0) >= (lastNowPlayingTs || 0)) {
               log('⏸ Setting paused state');
               setPausedState(true);
+            } else if (currentSongId) {
+              log('⚠️ [WS] Ignoring stale NOW_PAUSED after song change');
             }
           }
           else if (inner.type === 'NOW_RESUMED') {
@@ -619,7 +635,13 @@
           else if (inner.type === 'NOW_SYNC') {
             log('🔄 Syncing song');
             if (!currentSongId && inner.id) showSong(inner);
-            else if (inner.id === currentSongId) setPausedState(!!inner.paused);
+            else if (inner.id === currentSongId) {
+              if (inner.paused && (inner.ts || 0) < (lastNowPlayingTs || 0) + 2000) {
+                log('⚠️ [WS] Ignoring NOW_SYNC paused=true right after song change');
+              } else {
+                setPausedState(!!inner.paused);
+              }
+            }
           }
           else if (inner.type === 'AD_MUTE') {
             if (audioPlayer && audioReady) {
@@ -749,6 +771,26 @@
   function onAudioPlayerStateChange(e) {
     const stateNames = ['UNSTARTED', 'ENDED', 'PLAYING', 'PAUSED', 'BUFFERING', 'CUED'];
     log('🎵 Audio player state: ' + stateNames[e.data] + ' (id: ' + currentAudioId + ')');
+
+    // YT.PlayerState: -1=UNSTARTED, 0=ENDED, 1=PLAYING, 2=PAUSED, 3=BUFFERING, 5=CUED
+    // Під час loadVideoById YouTube автоматично кидає PAUSED/BUFFERING —
+    // ігноруємо їх якщо overlay не вважає пісню на паузі (isPaused = false)
+    if (e.data === 2 /* PAUSED */ && !isPaused && currentAudioId) {
+      const timeSincePlay = Date.now() - (lastNowPlayingTs || 0);
+      if (timeSincePlay < 5000) {
+        // Автопауза від YouTube при завантаженні нової пісні — відновлюємо
+        log('🔁 YouTube auto-paused during load, resuming...');
+        setTimeout(function() {
+          if (!isPaused && audioPlayer && audioReady) {
+            audioPlayer.playVideo();
+          }
+        }, 500);
+      }
+    }
+
+    if (e.data === 0 /* ENDED */ && currentAudioId) {
+      log('🎵 Audio ended');
+    }
   }
 
   function onAudioPlayerError(e) {
