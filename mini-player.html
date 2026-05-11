@@ -407,31 +407,35 @@
   }
 
   // ── localStorage polling (reads from index.html) ─────────────────────────
-  function poll() {
-    try {
-      const raw = localStorage.getItem('ytm_now_playing');
-      if (!raw) return;
-      const d = JSON.parse(raw);
+  const RECENCY_MS = 3000;
 
-      // Don't replay old events
+  function log(msg) { try { console.log('[MiniPlayer] ' + msg); } catch(e) {} }
+
+  function processStoredData(d) {
+    if (!d) return;
+    try {
+      const now = Date.now();
+      if (d.ts && (now - d.ts) > RECENCY_MS) {
+        log('Ignoring stale payload ts=' + d.ts);
+        return;
+      }
       if (d.ts && d.ts === lastTs) return;
       lastTs = d.ts || 0;
 
-      if (d.type === 'NOW_PLAYING') {
-        if (d.stopped || !d.id) hideSong();
-        else showSong(d);
-      }
-      else if (d.type === 'NOW_PAUSED')   { if (currentId) updatePauseState(true); }
-      else if (d.type === 'NOW_RESUMED')  { if (currentId) updatePauseState(false); }
-      else if (d.type === 'NOW_STOPPED')  { hideSong(); }
-      else if (d.type === 'NOW_SYNC') {
-        if (!currentId && d.id) {
-          showSong(d);
-        } else if (d.id === currentId) {
-          // Update pause state
-          updatePauseState(!!d.paused);
+      log('Stored data: type=' + (d.type || 'legacy') + ' id=' + (d.id || ''));
 
-          // Update title/author only if changed to avoid re-triggering marquee unnecessarily
+      if (d.type === 'NOW_PLAYING') {
+        if (d.stopped || !d.id) { log('NOW_PLAYING -> hideSong'); hideSong(); }
+        else { log('NOW_PLAYING -> showSong'); showSong(d); }
+      }
+      else if (d.type === 'NOW_PAUSED')   { if (currentId && d.id === currentId) { log('NOW_PAUSED'); updatePauseState(true); } }
+      else if (d.type === 'NOW_RESUMED')  { if (currentId && d.id === currentId) { log('NOW_RESUMED'); if (d.elapsed !== undefined) { /* optionally sync elapsed */ } updatePauseState(false); } }
+      else if (d.type === 'NOW_STOPPED')  { log('NOW_STOPPED'); hideSong(); }
+      else if (d.type === 'NOW_SYNC') {
+        log('NOW_SYNC');
+        if (!currentId && d.id) showSong(d);
+        else if (d.id === currentId) {
+          updatePauseState(!!d.paused);
           const newTitle = d.title || 'Unknown';
           const newAuthor = d.author || '';
           if (titleEl.textContent !== newTitle) {
@@ -449,11 +453,32 @@
           if (authorEl.textContent !== newAuthor) authorEl.textContent = newAuthor;
         }
       }
-      // legacy (no type field)
       else if (!d.type && d.id) { showSong(d); }
       else if (!d.type && d.stopped) { hideSong(); }
-    } catch(e) {}
+    } catch (err) { console.error('[MiniPlayer] processStoredData error', err); }
   }
+
+  function poll() {
+    try {
+      const raw = localStorage.getItem('ytm_now_playing');
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      processStoredData(d);
+    } catch (e) { console.error('[MiniPlayer] poll error', e); }
+  }
+
+  // Immediate reaction to storage events from other windows
+  window.addEventListener('storage', function(e) {
+    try {
+      if (e.key === 'ytm_now_playing') {
+        log('storage event received');
+        if (e.newValue) {
+          const d = JSON.parse(e.newValue);
+          processStoredData(d);
+        }
+      }
+    } catch (err) {}
+  });
 
   setInterval(poll, 200);
   setTimeout(poll, 300);
@@ -523,7 +548,7 @@
   // ── Hold-to-seek logic для Prev / Next ───────────────────────────────────
   const HOLD_THRESHOLD = 500;   // мс до початку перемотки
   const SEEK_INTERVAL  = 250;   // мс між кроками перемотки
-  const SEEK_STEP      = 5;     // секунд за крок
+  const SEEK_STEP      = 3;     // секунд за крок
 
   function setupHoldBtn(btnId, cmdClick, seekDir) {
     const btn = document.getElementById(btnId);
