@@ -1517,7 +1517,7 @@
                 // Start periodic sync every 500ms
                 syncInterval = setInterval(() => {
                     if (currentSongInfo && player && player.getPlayerState() !== 5) {
-                        const elapsed = Math.round(player.getCurrentTime() || 0);
+                        const elapsed = Math.floor(player.getCurrentTime() || 0);
                         const paused = player.getPlayerState() === 2;
                         const syncPayload = {
                             type: 'NOW_SYNC',
@@ -1595,7 +1595,7 @@
                 document.getElementById('now-playing-meta').innerText = currentSongInfo.user === "Auto" ? `Auto` : `👤 ${currentSongInfo.user}`;
                 // Update overlay state
                 if (currentSongInfo) {
-                    const elapsed = Math.round(player.getCurrentTime() || 0);
+                    const elapsed = Math.floor(player.getCurrentTime() || 0);
                     const payload = {
                         type: 'NOW_RESUMED',
                         id: currentSongInfo.id,
@@ -1616,7 +1616,7 @@
             else if (e.data === 2) {
                 // Paused
                 if (currentSongInfo) {
-                    const elapsed = Math.round(player.getCurrentTime() || 0);
+                    const elapsed = Math.floor(player.getCurrentTime() || 0);
                     const payload = {
                         type: 'NOW_PAUSED',
                         id: currentSongInfo.id,
@@ -1639,47 +1639,69 @@
         function skipSong() { log("⏭️ SKIP", "warn"); playNext(); }
 
         // ── Ad-mute: глушимо звук поки грає реклама ─────────────────────────
-        // Стратегія: порівнюємо getDuration() з очікуваною тривалістю пісні.
-        // Під час реклами YouTube підставляє тривалість рекламного ролика,
-        // яка не збігається з тривалістю поточної пісні — це єдиний надійний
-        // метод без cross-origin доступу до DOM iframe.
-        let adMuted     = false;
-        let savedVolume = 100;
+        // Стратегія: стежимо за getCurrentTime() — під час реклами embedded
+        // YouTube player повертає state=1 (playing) але getCurrentTime() не
+        // рухається і залишається близько до 0. getDuration() НЕ змінюється
+        // під час реклами, тому попередній метод не працював.
+        let adMuted       = false;
+        let savedVolume   = 100;
+        let adLastTime    = -1;
+        let adFrozenCount = 0;
 
         function onPlayerApiChange(e) {
-            // onApiChange спрацьовує коли змінюється доступність модулів API
-            // (зокрема під час реклами). Перевіряємо одразу.
             checkAdState();
         }
 
         function checkAdState() {
-            if (!player || typeof player.getDuration !== 'function') return;
+            if (!player || typeof player.getCurrentTime !== 'function') return;
             try {
-                const ytDuration = player.getDuration();           // тривалість поточного media
-                const expected   = currentSongInfo ? currentSongInfo.duration : 0;
+                const state    = player.getPlayerState(); // 1 = playing
+                const curTime  = player.getCurrentTime();
+                const expected = currentSongInfo ? currentSongInfo.duration : 0;
 
-                // Вважаємо рекламою якщо:
-                // 1) є поточна пісня (expected > 0)
-                // 2) ytDuration > 0 (плеєр щось грає)
-                // 3) різниця між ytDuration та expected більша за 8 секунд
-                //    (реклами зазвичай 15–30 с, пісні можуть бути ±5 с від metadata)
-                const adNow = expected > 0 && ytDuration > 0 && Math.abs(ytDuration - expected) > 8;
+                if (state === 1 && expected > 0) {
+                    if (curTime === adLastTime) {
+                        adFrozenCount++;
+                    } else {
+                        adFrozenCount = 0;
+                    }
+                    adLastTime = curTime;
 
-                if (adNow && !adMuted) {
-                    try { savedVolume = player.getVolume(); } catch(e) { savedVolume = 100; }
-                    player.mute();
-                    adMuted = true;
-                    log(`🔇 Реклама (ytDur=${ytDuration.toFixed(1)}s / expected=${expected}s) — звук заглушено`, 'warn');
-                } else if (!adNow && adMuted) {
-                    player.unMute();
-                    try { player.setVolume(savedVolume); } catch(e) {}
-                    adMuted = false;
-                    log('🔊 Реклама закінчилась — звук відновлено', 'warn');
+                    // Вважаємо рекламою якщо час не рухається 3+ цикли (~2.4с)
+                    // і ще близько до початку (< 2с)
+                    const adNow = adFrozenCount >= 3 && curTime < 2;
+
+                    if (adNow && !adMuted) {
+                        try { savedVolume = player.getVolume(); } catch(e) { savedVolume = 100; }
+                        player.mute();
+                        adMuted = true;
+                        try { localStorage.setItem('ytm_ad_playing', '1'); } catch(e) {}
+                        try { localStorage.setItem('ytm_now_playing', JSON.stringify({ type: 'AD_MUTE', muted: true, ts: Date.now() })); } catch(e) {}
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ request: "BroadcastEvent", name: "AD_MUTE", data: { type: 'AD_MUTE', muted: true, ts: Date.now() }, id: "AdMute" }));
+                        }
+                        log(`🔇 Реклама (curTime=${curTime.toFixed(2)}s frozen=${adFrozenCount}) — звук заглушено`, 'warn');
+                    } else if (!adNow && adMuted && curTime > 2) {
+                        player.unMute();
+                        try { player.setVolume(savedVolume); } catch(e) {}
+                        adMuted = false;
+                        adFrozenCount = 0;
+                        try { localStorage.setItem('ytm_ad_playing', '0'); } catch(e) {}
+                        try { localStorage.setItem('ytm_now_playing', JSON.stringify({ type: 'AD_UNMUTE', muted: false, ts: Date.now() })); } catch(e) {}
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ request: "BroadcastEvent", name: "AD_UNMUTE", data: { type: 'AD_UNMUTE', muted: false, ts: Date.now() }, id: "AdUnmute" }));
+                        }
+                        log('🔊 Реклама закінчилась — звук відновлено', 'warn');
+                    }
+                } else {
+                    // Плеєр не грає або немає поточної пісні — скидаємо лічильник
+                    adFrozenCount = 0;
+                    adLastTime = -1;
                 }
             } catch(e) {}
         }
 
-        // Резервний полінг — на випадок якщо onApiChange не спрацює
+        // Полінг кожні 800мс
         setInterval(checkAdState, 800);
         
         function togglePlay() { 
