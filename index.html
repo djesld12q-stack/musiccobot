@@ -2032,18 +2032,89 @@
         function handleMiniCmd(cmd) {
             try {
                 if (!cmd || !cmd.type) return;
-                if (cmd.ts && Date.now() - cmd.ts > 3000) return;
+                // allow slightly longer transport delays
+                if (cmd.ts && Date.now() - cmd.ts > 5000) return;
                 console.log('[MiniPlayer] cmd:', cmd.type);
-                if      (cmd.type === 'CMD_PREV')  prevSong();
-                else if (cmd.type === 'CMD_NEXT')  skipSong();
-                else if (cmd.type === 'CMD_PAUSE' && player && currentSongInfo) player.pauseVideo();
-                else if (cmd.type === 'CMD_PLAY'  && player && currentSongInfo) player.playVideo();
-                else if (cmd.type === 'CMD_SEEK_REL' && player && currentSongInfo) {
+
+                if (cmd.type === 'CMD_PREV') {
+                    prevSong();
+                    return;
+                }
+                if (cmd.type === 'CMD_NEXT') {
+                    skipSong();
+                    return;
+                }
+
+                if (cmd.type === 'CMD_PAUSE') {
+                    if (player && typeof player.pauseVideo === 'function') {
+                        player.pauseVideo();
+                    } else if (currentSongInfo) {
+                        // update overlay state so other UIs reflect pause
+                        const payload = {
+                            type: 'NOW_PAUSED',
+                            id: currentSongInfo.id,
+                            title: currentSongInfo.title,
+                            author: currentSongInfo.author,
+                            user: currentSongInfo.user,
+                            duration: currentSongInfo.duration || 0,
+                            elapsed: Math.round((player && player.getCurrentTime) ? (player.getCurrentTime() || 0) : 0),
+                            paused: true,
+                            ts: Date.now()
+                        };
+                        localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                    }
+                    return;
+                }
+
+                if (cmd.type === 'CMD_PLAY') {
+                    if (player && typeof player.playVideo === 'function') {
+                        player.playVideo();
+                    } else if (currentSongInfo) {
+                        const payload = {
+                            type: 'NOW_RESUMED',
+                            id: currentSongInfo.id,
+                            title: currentSongInfo.title,
+                            author: currentSongInfo.author,
+                            user: currentSongInfo.user,
+                            duration: currentSongInfo.duration || 0,
+                            elapsed: Math.round((player && player.getCurrentTime) ? (player.getCurrentTime() || 0) : 0),
+                            paused: false,
+                            ts: Date.now()
+                        };
+                        localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                    } else if (playQueue.length > 0) {
+                        // no current song — start next
+                        playNext();
+                    } else if (masterList.length > 0) {
+                        startSystem();
+                    }
+                    return;
+                }
+
+                if (cmd.type === 'CMD_SEEK_REL') {
                     const delta = Number(cmd.delta) || 0;
-                    const cur   = player.getCurrentTime() || 0;
-                    const dur   = player.getDuration()    || 0;
-                    const next  = Math.min(Math.max(cur + delta, 0), dur);
-                    player.seekTo(next, true);
+                    if (player && typeof player.getCurrentTime === 'function') {
+                        const cur = player.getCurrentTime() || 0;
+                        const dur = (player.getDuration && player.getDuration()) || (currentSongInfo ? currentSongInfo.duration : 0);
+                        const next = Math.min(Math.max(cur + delta, 0), dur || cur + delta);
+                        try { player.seekTo(next, true); } catch (e) { /* ignore */ }
+                    } else if (currentSongInfo) {
+                        // fallback: update overlay sync so UI shows new position
+                        const target = Math.max(0, (cmd.delta || 0) + (currentSongInfo.elapsed || 0));
+                        const payload = {
+                            type: 'NOW_SYNC',
+                            id: currentSongInfo.id,
+                            title: currentSongInfo.title,
+                            author: currentSongInfo.author,
+                            user: currentSongInfo.user,
+                            duration: currentSongInfo.duration || 0,
+                            elapsed: target,
+                            paused: !!currentSongInfo.paused,
+                            ts: Date.now()
+                        };
+                        localStorage.setItem('ytm_now_playing', JSON.stringify(payload));
+                    }
+                    return;
                 }
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
