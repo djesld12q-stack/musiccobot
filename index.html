@@ -1392,7 +1392,7 @@
                     'modestbranding': 0,    // Show full YouTube branding
                     'rel': 0                 // Don't show related videos
                 },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onError': onPlayerError }
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onError': onPlayerError, 'onApiChange': onPlayerApiChange }
             });
         }
 
@@ -1639,62 +1639,48 @@
         function skipSong() { log("⏭️ SKIP", "warn"); playNext(); }
 
         // ── Ad-mute: глушимо звук поки грає реклама ─────────────────────────
-        (function setupAdMute() {
-            let adMuted      = false;   // чи зараз заглушено через рекламу
-            let savedVolume  = 100;     // гучність до реклами
-            const CHECK_MS   = 700;     // інтервал перевірки
+        // Стратегія: порівнюємо getDuration() з очікуваною тривалістю пісні.
+        // Під час реклами YouTube підставляє тривалість рекламного ролика,
+        // яка не збігається з тривалістю поточної пісні — це єдиний надійний
+        // метод без cross-origin доступу до DOM iframe.
+        let adMuted     = false;
+        let savedVolume = 100;
 
-            function isAdPlaying() {
-                if (!player || typeof player.getVideoUrl !== 'function') return false;
+        function onPlayerApiChange(e) {
+            // onApiChange спрацьовує коли змінюється доступність модулів API
+            // (зокрема під час реклами). Перевіряємо одразу.
+            checkAdState();
+        }
 
-                // Метод 1: URL містить /ads/ або youtube.com/pagead
-                try {
-                    const url = player.getVideoUrl();
-                    if (url && (url.includes('/pagead/') || url.includes('&ad_type='))) return true;
-                } catch(e) {}
+        function checkAdState() {
+            if (!player || typeof player.getDuration !== 'function') return;
+            try {
+                const ytDuration = player.getDuration();           // тривалість поточного media
+                const expected   = currentSongInfo ? currentSongInfo.duration : 0;
 
-                // Метод 2: DOM — клас .ad-showing або .ytp-ad-player-overlay
-                const iframe = document.querySelector('#player iframe, iframe#player');
-                if (iframe) {
-                    try {
-                        const doc = iframe.contentDocument || iframe.contentWindow.document;
-                        if (doc && doc.querySelector('.ad-showing, .ytp-ad-player-overlay-instream-info')) {
-                            return true;
-                        }
-                    } catch(e) {} // cross-origin — ігноруємо
-                }
-
-                // Метод 3: getVideoData — якщо video_id відрізняється від поточного
-                try {
-                    const vd = player.getVideoData();
-                    if (vd && currentSongInfo && vd.video_id && vd.video_id !== currentSongInfo.id) {
-                        return true;
-                    }
-                } catch(e) {}
-
-                return false;
-            }
-
-            setInterval(() => {
-                if (!player || typeof player.isMuted !== 'function') return;
-                const adNow = isAdPlaying();
+                // Вважаємо рекламою якщо:
+                // 1) є поточна пісня (expected > 0)
+                // 2) ytDuration > 0 (плеєр щось грає)
+                // 3) різниця між ytDuration та expected більша за 8 секунд
+                //    (реклами зазвичай 15–30 с, пісні можуть бути ±5 с від metadata)
+                const adNow = expected > 0 && ytDuration > 0 && Math.abs(ytDuration - expected) > 8;
 
                 if (adNow && !adMuted) {
-                    // Реклама почалась — глушимо
                     try { savedVolume = player.getVolume(); } catch(e) { savedVolume = 100; }
                     player.mute();
                     adMuted = true;
-                    log('🔇 Реклама — звук заглушено', 'warn');
-                }
-                else if (!adNow && adMuted) {
-                    // Реклама закінчилась — відновлюємо
+                    log(`🔇 Реклама (ytDur=${ytDuration.toFixed(1)}s / expected=${expected}s) — звук заглушено`, 'warn');
+                } else if (!adNow && adMuted) {
                     player.unMute();
                     try { player.setVolume(savedVolume); } catch(e) {}
                     adMuted = false;
                     log('🔊 Реклама закінчилась — звук відновлено', 'warn');
                 }
-            }, CHECK_MS);
-        })();
+            } catch(e) {}
+        }
+
+        // Резервний полінг — на випадок якщо onApiChange не спрацює
+        setInterval(checkAdState, 800);
         
         function togglePlay() { 
             if (!currentSongInfo) {
