@@ -929,27 +929,9 @@
   // index.html встановлює ytm_ad_playing='1' коли детектує рекламу.
   // Ми глушимо audioPlayer (саме його захоплює OBS як аудіо джерело).
   let obsAdMuted = false;
-
-  function checkObsAdMute() {
-    try {
-      const isAd = localStorage.getItem('ytm_ad_playing') === '1';
-      if (isAd && !obsAdMuted) {
-        if (audioPlayer && audioReady) {
-          audioPlayer.setVolume(0);
-          log('🔇 [OBS] Реклама — аудіо заглушено');
-        }
-        obsAdMuted = true;
-      } else if (!isAd && obsAdMuted) {
-        if (audioPlayer && audioReady) {
-          audioPlayer.setVolume(100);
-          log('🔊 [OBS] Реклама закінчилась — аудіо відновлено');
-        }
-        obsAdMuted = false;
-      }
-    } catch(e) {}
-  }
-
-  setInterval(checkObsAdMute, 500);
+  // Ad-mute керується подіями AD_MUTE / AD_UNMUTE через WS і LS (обробники вище).
+  // setInterval-polling прибрано — він скасовував мут отриманий через WS,
+  // бо ytm_ad_playing міг ще не встигнути оновитись у localStorage.
 
   // ── Load YouTube IFrame API (if not already loaded) ────────────────────────
   if (!window.YT || !window.YT.Player) {

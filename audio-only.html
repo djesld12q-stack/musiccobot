@@ -34,6 +34,10 @@
     let lastUpdateTs = 0;
     let pendingAudioAction = null;
 
+    // --- AD MUTE ---
+    let isAdPlaying = false;
+    let savedVolume = 100;
+
     function log(message) {
       console.log('[YTM Audio Sync] ' + message);
     }
@@ -85,12 +89,54 @@
       } catch (err) {
         log('Попередження: не вдалося розблокувати звук: ' + err);
       }
+
+      // --- ГЛУШИМО РЕКЛАМУ ---
+      try {
+        audioPlayer.addEventListener('onAdStart', function() {
+          isAdPlaying = true;
+          savedVolume = audioPlayer.getVolume() || 100;
+          audioPlayer.mute();
+          updateOverlay('🔇 Реклама...', 'Звук заглушено автоматично');
+          log('🔇 Реклама почалась — звук заглушено');
+        });
+        audioPlayer.addEventListener('onAdEnd', function() {
+          isAdPlaying = false;
+          audioPlayer.unMute();
+          audioPlayer.setVolume(savedVolume);
+          log('🔊 Реклама завершена — звук відновлено');
+        });
+        log('Ad events підключено');
+      } catch(err) {
+        log('Ad events недоступні: ' + err);
+      }
+
       if (pendingAudioAction) {
         const action = pendingAudioAction;
         pendingAudioAction = null;
         action();
       }
     }
+
+    // --- FALLBACK: перевірка реклами через video_id ---
+    function checkForAd() {
+      if (!audioReady || !audioPlayer || !currentAudioId) return;
+      try {
+        const videoData = audioPlayer.getVideoData();
+        const playingId = videoData && videoData.video_id;
+        if (playingId && playingId !== currentAudioId && !isAdPlaying) {
+          isAdPlaying = true;
+          savedVolume = audioPlayer.getVolume() || 100;
+          audioPlayer.mute();
+          log('🔇 Реклама (fallback) — video_id змінився: ' + playingId);
+        } else if (playingId === currentAudioId && isAdPlaying) {
+          isAdPlaying = false;
+          audioPlayer.unMute();
+          audioPlayer.setVolume(savedVolume);
+          log('🔊 Реклама завершена (fallback) — відновлено');
+        }
+      } catch(e) {}
+    }
+    setInterval(checkForAd, 500);
 
     function onAudioPlayerStateChange(event) {
       const names = ['UNSTARTED', 'ENDED', 'PLAYING', 'PAUSED', 'BUFFERING', 'CUED'];
