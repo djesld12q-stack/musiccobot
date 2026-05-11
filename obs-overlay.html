@@ -230,12 +230,7 @@
   // For OBS: Set these URL parameters: ?ws_host=YOUR_PC_IP&ws_port=8080
   const urlParams = new URLSearchParams(window.location.search);
   let WS_HOST = urlParams.get('ws_host') || '127.0.0.1'; // Use 127.0.0.1 for localhost (more reliable in OBS)
-
-  // Cross-origin detection: GitHub Pages (or any non-localhost origin) can't
-  // use localStorage shared with index.html. Always fall back to WebSocket.
-  const isCrossOrigin = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-
-  let WS_PORT = urlParams.get('ws_port') || (!isCrossOrigin && localStorage.getItem('ytm_ws_port')) || '8080';
+  let WS_PORT = urlParams.get('ws_port') || localStorage.getItem('ytm_ws_port') || '8080';
 
   const COLORS = {
     request: { glow:'rgba(145,70,255,0.25)', bar:'#9146ff', badge:'rgba(145,70,255,0.85)' },
@@ -513,15 +508,14 @@
     }
   }
 
-  // Start checking localStorage for updates (same-origin only)
-  if (!isCrossOrigin) {
-    log('Starting overlay... checking localStorage every 200ms');
-    updateCheckInterval = setInterval(checkForSongUpdate, 200); // Check every 200ms
-    setTimeout(checkForSongUpdate, 500);
-  } else {
-    log('Cross-origin detected (GitHub Pages) — skipping localStorage, using WebSocket only');
-  }
+  // Start checking localStorage for updates
+  log('Starting overlay... checking localStorage every 200ms');
   log('WebSocket: ws://' + WS_HOST + ':' + WS_PORT + '/');
+  setStatus('connected', 'Підключено · очікування пісні...');
+  updateCheckInterval = setInterval(checkForSongUpdate, 200); // Check every 200ms
+  
+  // Also check immediately on load
+  setTimeout(checkForSongUpdate, 500);
 
   // ── WebSocket Fallback (якщо localStorage не працює) ──────────────────────
   let ws = null;
@@ -639,14 +633,16 @@
 
   // Try WebSocket after a delay (in case localStorage works)
   const isOBSBrowser = navigator.userAgent.includes('CEF');
-  const wsDelay = (isOBSBrowser || isCrossOrigin) ? 0 : 2000; // No delay in OBS or cross-origin
-
+  // GitHub Pages / cross-origin: localStorage won't have data from index.html
+  const isCrossOrigin = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+  const wsDelay = (isOBSBrowser || isCrossOrigin) ? 0 : 2000;
+  
   setTimeout(() => {
-    const stored = !isCrossOrigin && localStorage.getItem('ytm_now_playing');
+    const stored = localStorage.getItem('ytm_now_playing');
     if (!stored || isOBSBrowser || isCrossOrigin) {
       if (!stored && !isCrossOrigin) log('No localStorage data found, trying WebSocket...');
       if (isOBSBrowser) log('OBS Browser Source detected - using WebSocket only');
-      if (isCrossOrigin) log('GitHub Pages / cross-origin — connecting WebSocket immediately');
+      if (isCrossOrigin) log('GitHub Pages detected - connecting WebSocket immediately');
       connectWebsocket();
     }
   }, wsDelay);
