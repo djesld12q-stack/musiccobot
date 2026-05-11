@@ -463,7 +463,7 @@
   }
 
   // ── Hold-to-seek logic для Prev / Next ───────────────────────────────────
-  const HOLD_THRESHOLD = 400;   // мс до початку перемотки
+  const HOLD_THRESHOLD = 500;   // мс до початку перемотки
   const SEEK_INTERVAL  = 250;   // мс між кроками перемотки
   const SEEK_STEP      = 5;     // секунд за крок
 
@@ -471,17 +471,16 @@
     const btn = document.getElementById(btnId);
     let holdTimer   = null;
     let seekTimer   = null;
-    let didSeek     = false;
-    let isHolding   = false;
+    let seekStarted = false;  // чи справді почалась перемотка
+    let pressTime   = 0;
 
     function startHold(e) {
       e.preventDefault();
-      didSeek   = false;
-      isHolding = true;
+      seekStarted = false;
+      pressTime   = Date.now();
 
       holdTimer = setTimeout(() => {
-        if (!isHolding) return;
-        didSeek = true;
+        seekStarted = true;
 
         // Візуально позначаємо режим перемотки
         btn.style.color = 'var(--accent)';
@@ -498,7 +497,6 @@
     }
 
     function endHold(e) {
-      isHolding = false;
       clearTimeout(holdTimer);
       clearInterval(seekTimer);
       holdTimer = null;
@@ -508,16 +506,18 @@
       btn.style.color = '';
       btn.style.boxShadow = '';
 
-      if (!didSeek) {
-        // Звичайний клік — перемикання пісні
+      // Клік тільки якщо перемотка НЕ почалась і кнопка ще не відпущена за межами
+      if (!seekStarted && e.type !== 'mouseleave') {
         sendCmd(cmdClick, btn);
       }
+
+      seekStarted = false;
     }
 
     // Mouse
     btn.addEventListener('mousedown',  startHold);
     btn.addEventListener('mouseup',    endHold);
-    btn.addEventListener('mouseleave', endHold);
+    btn.addEventListener('mouseleave', endHold);  // зупиняє перемотку, але НЕ перемикає пісню
 
     // Touch
     btn.addEventListener('touchstart', startHold, { passive: false });
