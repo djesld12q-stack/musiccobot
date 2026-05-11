@@ -441,67 +441,63 @@
   function checkForSongUpdate() {
     try {
       const stored = localStorage.getItem('ytm_now_playing');
-      if (!stored) {
-        // log('No localStorage data yet');
-        return;
-      }
-      
+      if (!stored) return;
+
       const data = JSON.parse(stored);
-      const now = Date.now();
-      
-      log('Data from localStorage: ' + JSON.stringify(data));
-      
-      // Only process if data was updated recently (within last 3 seconds)
-      if (data.ts && (now - data.ts) < 3000) {
-        if (data.ts === lastUpdate) return; // No update
-        lastUpdate = data.ts;
-        
-        log('Processing: ' + data.type);
-        
-        if (data.type === 'NOW_PLAYING') {
-          if (data.stopped || !data.id) {
-            log('Hiding song (stopped)');
-            hideSong();
-          } else {
-            log('Showing song: ' + data.title);
-            showSong(data);
-          }
-        }
-        else if (data.type === 'NOW_PAUSED') {
-          if (card.classList.contains('visible')) {
-            log('Setting paused state');
-            setPausedState(true);
-          }
-        }
-        else if (data.type === 'NOW_RESUMED') {
-          if (card.classList.contains('visible')) {
-            if (data.elapsed !== undefined) elapsed = data.elapsed;
-            log('Setting resumed state');
-            setPausedState(false);
-          }
-        }
-        else if (data.type === 'NOW_STOPPED') {
+
+      // Skip already-processed events (same approach as mini-player)
+      if (data.ts && data.ts === lastUpdate) return;
+      lastUpdate = data.ts || 0;
+
+      log('Processing: ' + data.type);
+
+      if (data.type === 'NOW_PLAYING') {
+        if (data.stopped || !data.id) {
           log('Hiding song (stopped)');
           hideSong();
-        }
-        else if (data.type === 'NOW_SYNC') {
-          syncSong(data);
-        }
-        else if (data.type === 'AD_MUTE') {
-          if (audioPlayer && audioReady && !obsAdMuted) {
-            audioPlayer.setVolume(0);
-            log('🔇 [LS] Реклама — аудіо заглушено');
-          }
-          obsAdMuted = true;
-        }
-        else if (data.type === 'AD_UNMUTE') {
-          if (audioPlayer && audioReady && obsAdMuted) {
-            audioPlayer.setVolume(100);
-            log('🔊 [LS] Реклама закінчилась — аудіо відновлено');
-          }
-          obsAdMuted = false;
+        } else {
+          log('Showing song: ' + data.title);
+          showSong(data);
         }
       }
+      else if (data.type === 'NOW_PAUSED') {
+        if (currentSongId) {
+          log('Setting paused state');
+          setPausedState(true);
+        }
+      }
+      else if (data.type === 'NOW_RESUMED') {
+        if (currentSongId) {
+          if (data.elapsed !== undefined) elapsed = data.elapsed;
+          log('Setting resumed state');
+          setPausedState(false);
+        }
+      }
+      else if (data.type === 'NOW_STOPPED') {
+        log('Hiding song (stopped)');
+        hideSong();
+      }
+      else if (data.type === 'NOW_SYNC') {
+        if (!currentSongId && data.id) showSong(data);
+        else if (data.id === currentSongId) setPausedState(!!data.paused);
+      }
+      else if (data.type === 'AD_MUTE') {
+        if (audioPlayer && audioReady && !obsAdMuted) {
+          audioPlayer.setVolume(0);
+          log('🔇 [LS] Реклама — аудіо заглушено');
+        }
+        obsAdMuted = true;
+      }
+      else if (data.type === 'AD_UNMUTE') {
+        if (audioPlayer && audioReady && obsAdMuted) {
+          audioPlayer.setVolume(100);
+          log('🔊 [LS] Реклама закінчилась — аудіо відновлено');
+        }
+        obsAdMuted = false;
+      }
+      // legacy (no type field)
+      else if (!data.type && data.id) { showSong(data); }
+      else if (!data.type && data.stopped) { hideSong(); }
     } catch (err) {
       console.error('[OBS Overlay] Error reading localStorage:', err);
     }
@@ -573,13 +569,13 @@
             }
           }
           else if (inner.type === 'NOW_PAUSED') {
-            if (card.classList.contains('visible')) {
+            if (currentSongId) {
               log('⏸ Setting paused state');
               setPausedState(true);
             }
           }
           else if (inner.type === 'NOW_RESUMED') {
-            if (card.classList.contains('visible')) {
+            if (currentSongId) {
               if (inner.elapsed !== undefined) elapsed = inner.elapsed;
               log('▶️ Setting resumed state');
               setPausedState(false);
@@ -591,7 +587,8 @@
           }
           else if (inner.type === 'NOW_SYNC') {
             log('🔄 Syncing song');
-            syncSong(inner);
+            if (!currentSongId && inner.id) showSong(inner);
+            else if (inner.id === currentSongId) setPausedState(!!inner.paused);
           }
           else if (inner.type === 'AD_MUTE') {
             if (audioPlayer && audioReady) {
@@ -607,6 +604,8 @@
             }
             obsAdMuted = false;
           }
+          // legacy (no type field)
+          else if (!inner.type && inner.stopped) { hideSong(); }
         } catch (err) {
           log('❌ Error parsing WebSocket message: ' + err.message);
           console.error('Parse error details:', err);
