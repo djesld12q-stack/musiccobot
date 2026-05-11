@@ -230,7 +230,12 @@
   // For OBS: Set these URL parameters: ?ws_host=YOUR_PC_IP&ws_port=8080
   const urlParams = new URLSearchParams(window.location.search);
   let WS_HOST = urlParams.get('ws_host') || '127.0.0.1'; // Use 127.0.0.1 for localhost (more reliable in OBS)
-  let WS_PORT = urlParams.get('ws_port') || localStorage.getItem('ytm_ws_port') || '8080';
+
+  // Cross-origin detection: GitHub Pages (or any non-localhost origin) can't
+  // use localStorage shared with index.html. Always fall back to WebSocket.
+  const isCrossOrigin = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+
+  let WS_PORT = urlParams.get('ws_port') || (!isCrossOrigin && localStorage.getItem('ytm_ws_port')) || '8080';
 
   const COLORS = {
     request: { glow:'rgba(145,70,255,0.25)', bar:'#9146ff', badge:'rgba(145,70,255,0.85)' },
@@ -487,20 +492,36 @@
         else if (data.type === 'NOW_SYNC') {
           syncSong(data);
         }
+        else if (data.type === 'AD_MUTE') {
+          if (audioPlayer && audioReady && !obsAdMuted) {
+            audioPlayer.mute();
+            log('🔇 [LS] Реклама — аудіо заглушено');
+          }
+          obsAdMuted = true;
+        }
+        else if (data.type === 'AD_UNMUTE') {
+          if (audioPlayer && audioReady && obsAdMuted) {
+            audioPlayer.unMute();
+            audioPlayer.setVolume(100);
+            log('🔊 [LS] Реклама закінчилась — аудіо відновлено');
+          }
+          obsAdMuted = false;
+        }
       }
     } catch (err) {
       console.error('[OBS Overlay] Error reading localStorage:', err);
     }
   }
 
-  // Start checking localStorage for updates
-  log('Starting overlay... checking localStorage every 200ms');
+  // Start checking localStorage for updates (same-origin only)
+  if (!isCrossOrigin) {
+    log('Starting overlay... checking localStorage every 200ms');
+    updateCheckInterval = setInterval(checkForSongUpdate, 200); // Check every 200ms
+    setTimeout(checkForSongUpdate, 500);
+  } else {
+    log('Cross-origin detected (GitHub Pages) — skipping localStorage, using WebSocket only');
+  }
   log('WebSocket: ws://' + WS_HOST + ':' + WS_PORT + '/');
-  setStatus('connected', 'Підключено · очікування пісні...');
-  updateCheckInterval = setInterval(checkForSongUpdate, 200); // Check every 200ms
-  
-  // Also check immediately on load
-  setTimeout(checkForSongUpdate, 500);
 
   // ── WebSocket Fallback (якщо localStorage не працює) ──────────────────────
   let ws = null;
@@ -579,6 +600,21 @@
             log('🔄 Syncing song');
             syncSong(inner);
           }
+          else if (inner.type === 'AD_MUTE') {
+            if (audioPlayer && audioReady) {
+              audioPlayer.mute();
+              log('🔇 [WS] Реклама — аудіо заглушено');
+            }
+            obsAdMuted = true;
+          }
+          else if (inner.type === 'AD_UNMUTE') {
+            if (audioPlayer && audioReady) {
+              audioPlayer.unMute();
+              audioPlayer.setVolume(100);
+              log('🔊 [WS] Реклама закінчилась — аудіо відновлено');
+            }
+            obsAdMuted = false;
+          }
         } catch (err) {
           log('❌ Error parsing WebSocket message: ' + err.message);
           console.error('Parse error details:', err);
@@ -603,13 +639,14 @@
 
   // Try WebSocket after a delay (in case localStorage works)
   const isOBSBrowser = navigator.userAgent.includes('CEF');
-  const wsDelay = isOBSBrowser ? 0 : 2000; // No delay in OBS
-  
+  const wsDelay = (isOBSBrowser || isCrossOrigin) ? 0 : 2000; // No delay in OBS or cross-origin
+
   setTimeout(() => {
-    const stored = localStorage.getItem('ytm_now_playing');
-    if (!stored || isOBSBrowser) {
-      if (!stored) log('No localStorage data found, trying WebSocket...');
+    const stored = !isCrossOrigin && localStorage.getItem('ytm_now_playing');
+    if (!stored || isOBSBrowser || isCrossOrigin) {
+      if (!stored && !isCrossOrigin) log('No localStorage data found, trying WebSocket...');
       if (isOBSBrowser) log('OBS Browser Source detected - using WebSocket only');
+      if (isCrossOrigin) log('GitHub Pages / cross-origin — connecting WebSocket immediately');
       connectWebsocket();
     }
   }, wsDelay);
@@ -821,6 +858,33 @@
       }
     }
   };
+
+  // ── Ad-mute: слухаємо сигнал реклами від index.html через localStorage ──────
+  // index.html встановлює ytm_ad_playing='1' коли детектує рекламу.
+  // Ми глушимо audioPlayer (саме його захоплює OBS як аудіо джерело).
+  let obsAdMuted = false;
+
+  function checkObsAdMute() {
+    try {
+      const isAd = localStorage.getItem('ytm_ad_playing') === '1';
+      if (isAd && !obsAdMuted) {
+        if (audioPlayer && audioReady) {
+          audioPlayer.mute();
+          log('🔇 [OBS] Реклама — аудіо заглушено');
+        }
+        obsAdMuted = true;
+      } else if (!isAd && obsAdMuted) {
+        if (audioPlayer && audioReady) {
+          audioPlayer.unMute();
+          audioPlayer.setVolume(100);
+          log('🔊 [OBS] Реклама закінчилась — аудіо відновлено');
+        }
+        obsAdMuted = false;
+      }
+    } catch(e) {}
+  }
+
+  setInterval(checkObsAdMute, 500);
 
   // ── Load YouTube IFrame API (if not already loaded) ────────────────────────
   if (!window.YT || !window.YT.Player) {
