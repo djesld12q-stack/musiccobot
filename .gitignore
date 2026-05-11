@@ -1,0 +1,14 @@
+# Конфігурація з токенами — НІКОЛИ не комітити!
+.env
+
+# Залежності Node.js
+node_modules/
+package-lock.json
+
+# Системне
+.DS_Store
+Thumbs.db
+*.log
+
+# Тимчасові TTS/звук файли
+/tmp/mono_*

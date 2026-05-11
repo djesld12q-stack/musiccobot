@@ -1980,6 +1980,13 @@
                 else if (cmd.type === 'CMD_NEXT')  skipSong();
                 else if (cmd.type === 'CMD_PAUSE' && player && currentSongInfo) player.pauseVideo();
                 else if (cmd.type === 'CMD_PLAY'  && player && currentSongInfo) player.playVideo();
+                else if (cmd.type === 'CMD_SEEK_REL' && player && currentSongInfo) {
+                    const delta = Number(cmd.delta) || 0;
+                    const cur   = player.getCurrentTime() || 0;
+                    const dur   = player.getDuration()    || 0;
+                    const next  = Math.min(Math.max(cur + delta, 0), dur);
+                    player.seekTo(next, true);
+                }
             } catch(e) { console.error('[MiniPlayer]', e); }
         }
         try {

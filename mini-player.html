@@ -293,7 +293,7 @@
     <div class="controls">
 
       <!-- Prev -->
-      <button class="ctrl-btn" id="btn-prev" title="Попередня пісня" onclick="sendCmd('CMD_PREV', this)">
+      <button class="ctrl-btn" id="btn-prev" title="Попередня пісня / Утримати — перемотати назад">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
         </svg>
@@ -310,7 +310,7 @@
       </button>
 
       <!-- Next -->
-      <button class="ctrl-btn" id="btn-next" title="Наступна пісня" onclick="sendCmd('CMD_NEXT', this)">
+      <button class="ctrl-btn" id="btn-next" title="Наступна пісня / Утримати — перемотати вперед">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
@@ -442,8 +442,8 @@
   try { bc = new BroadcastChannel('musiccobot_ctrl'); } catch(e) {}
 
   // ── Send commands to index.html ──────────────────────────────────────────
-  function sendCmd(type, btn) {
-    const msg = { type, ts: Date.now() };
+  function sendCmd(type, btn, extra) {
+    const msg = { type, ts: Date.now(), ...extra };
 
     // 1) BroadcastChannel (миттєво, без polling)
     if (bc) bc.postMessage(msg);
@@ -461,6 +461,72 @@
       setTimeout(() => btn.classList.remove('ripple'), 350);
     }
   }
+
+  // ── Hold-to-seek logic для Prev / Next ───────────────────────────────────
+  const HOLD_THRESHOLD = 400;   // мс до початку перемотки
+  const SEEK_INTERVAL  = 250;   // мс між кроками перемотки
+  const SEEK_STEP      = 5;     // секунд за крок
+
+  function setupHoldBtn(btnId, cmdClick, seekDir) {
+    const btn = document.getElementById(btnId);
+    let holdTimer   = null;
+    let seekTimer   = null;
+    let didSeek     = false;
+    let isHolding   = false;
+
+    function startHold(e) {
+      e.preventDefault();
+      didSeek   = false;
+      isHolding = true;
+
+      holdTimer = setTimeout(() => {
+        if (!isHolding) return;
+        didSeek = true;
+
+        // Візуально позначаємо режим перемотки
+        btn.style.color = 'var(--accent)';
+        btn.style.boxShadow = '0 0 10px rgba(145,70,255,0.5)';
+
+        // Перший крок одразу
+        sendCmd('CMD_SEEK_REL', btn, { delta: seekDir * SEEK_STEP });
+
+        // Повторюємо кожні SEEK_INTERVAL мс
+        seekTimer = setInterval(() => {
+          sendCmd('CMD_SEEK_REL', btn, { delta: seekDir * SEEK_STEP });
+        }, SEEK_INTERVAL);
+      }, HOLD_THRESHOLD);
+    }
+
+    function endHold(e) {
+      isHolding = false;
+      clearTimeout(holdTimer);
+      clearInterval(seekTimer);
+      holdTimer = null;
+      seekTimer = null;
+
+      // Скидаємо стиль
+      btn.style.color = '';
+      btn.style.boxShadow = '';
+
+      if (!didSeek) {
+        // Звичайний клік — перемикання пісні
+        sendCmd(cmdClick, btn);
+      }
+    }
+
+    // Mouse
+    btn.addEventListener('mousedown',  startHold);
+    btn.addEventListener('mouseup',    endHold);
+    btn.addEventListener('mouseleave', endHold);
+
+    // Touch
+    btn.addEventListener('touchstart', startHold, { passive: false });
+    btn.addEventListener('touchend',   endHold);
+    btn.addEventListener('touchcancel',endHold);
+  }
+
+  setupHoldBtn('btn-prev', 'CMD_PREV', -1);
+  setupHoldBtn('btn-next', 'CMD_NEXT', +1);
 </script>
 </body>
 </html>

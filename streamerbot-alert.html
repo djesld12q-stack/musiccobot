@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>MonoDonaty Alert</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: transparent;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  /* ── Підказка якщо немає токена ── */
+  #setup {
+    background: rgba(10,10,20,0.97);
+    border: 2px solid rgba(145,70,255,0.5);
+    border-radius: 16px;
+    padding: 32px 40px;
+    max-width: 560px; width: 90%;
+    color: #fff; text-align: center;
+    display: none;
+  }
+  #setup.visible { display: block; }
+  #setup h2 { color: #BF94FF; font-size: 18px; margin-bottom: 8px; }
+  #setup p  { color: rgba(255,255,255,.55); font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+  #setup .url-box {
+    background: rgba(145,70,255,.08);
+    border: 1px solid rgba(145,70,255,.3);
+    border-radius: 8px; padding: 12px 16px;
+    font-family: monospace; font-size: 12px;
+    color: #BF94FF; word-break: break-all;
+    text-align: left; line-height: 1.7;
+  }
+  #setup .url-box span { color: #FFD700; }
+  #setup .hint { margin-top: 12px; font-size: 11px; color: rgba(255,255,255,.25); }
+
+  /* ── Debug статус (тільки ?debug або ?test) ── */
+  #dbg {
+    display: none;
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.75); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 8px; padding: 6px 14px;
+    font-size: 11px; color: rgba(255,255,255,.6);
+    white-space: nowrap; z-index: 999;
+    pointer-events: none;
+  }
+  body.debug #dbg { display: block; }
+
+  /* ── Алерт-обгортка ── */
+  #alert-wrap {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex; justify-content: center;
+    padding-top: 40px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-140px) scale(0.9);
+  }
+  #alert-wrap.show { animation: aIn .55s cubic-bezier(.34,1.4,.64,1) forwards; }
+  #alert-wrap.hide { animation: aOut .4s ease-in forwards; }
+
+  @keyframes aIn {
+    0%   { opacity:0; transform:translateY(-140px) scale(.9); }
+    65%  { opacity:1; transform:translateY(12px) scale(1.02); }
+    100% { opacity:1; transform:translateY(0) scale(1); }
+  }
+  @keyframes aOut {
+    0%   { opacity:1; transform:translateY(0) scale(1); }
+    100% { opacity:0; transform:translateY(-60px) scale(.88); }
+  }
+
+  /* ── Частинки ── */
+  .particles { position:absolute; inset:-60px; pointer-events:none; z-index:0; }
+  .particle  { position:absolute; border-radius:50%; opacity:0; }
+
+  /* ── Картка ── */
+  #alert-card {
+    position: relative; z-index: 1;
+    background: linear-gradient(145deg, #0f0f1a 0%, #1a1a2e 60%, #16213e 100%);
+    border: 2px solid rgba(145,70,255,.75);
+    border-radius: 20px;
+    padding: 28px 44px 24px;
+    min-width: 460px; max-width: 640px;
+    text-align: center;
+    box-shadow:
+      0 0 0 1px rgba(145,70,255,.2),
+      0 0 40px rgba(145,70,255,.35),
+      0 0 80px rgba(145,70,255,.15),
+      0 20px 60px rgba(0,0,0,.8);
+  }
+  #alert-card::before {
+    content:""; position:absolute;
+    top:0; left:20px; right:20px; height:3px;
+    background: linear-gradient(90deg, transparent, #9146FF, #BF94FF, #9146FF, transparent);
+    border-radius: 0 0 4px 4px;
+    animation: shimmer 2s ease-in-out infinite;
+  }
+  @keyframes shimmer { 0%,100%{opacity:.6} 50%{opacity:1} }
+
+  .alert-icon {
+    font-size:40px; margin-bottom:10px; display:block;
+    filter: drop-shadow(0 0 12px rgba(145,70,255,.7));
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+
+  .alert-label {
+    font-size:11px; font-weight:700; letter-spacing:4px;
+    color:rgba(191,148,255,.8); text-transform:uppercase; margin-bottom:6px;
+  }
+  .alert-name {
+    font-size:32px; font-weight:800; color:#fff;
+    text-shadow:0 0 20px rgba(145,70,255,.5);
+    line-height:1.1; margin-bottom:4px; word-break:break-word;
+  }
+  .alert-amount {
+    font-size:48px; font-weight:900; color:#BF94FF;
+    text-shadow: 0 0 20px rgba(145,70,255,.8), 0 0 40px rgba(145,70,255,.4);
+    line-height:1; margin:8px 0 16px; letter-spacing:-1px;
+  }
+  .alert-divider {
+    width:60px; height:2px;
+    background: linear-gradient(90deg, transparent, rgba(145,70,255,.6), transparent);
+    margin: 0 auto 14px;
+  }
+  .alert-comment {
+    font-size:16px; color:rgba(255,255,255,.85);
+    font-style:italic; line-height:1.4;
+    max-width:400px; margin:0 auto; word-break:break-word;
+  }
+  .alert-comment::before { content:"«"; color:#BF94FF; margin-right:2px; }
+  .alert-comment::after  { content:"»"; color:#BF94FF; margin-left:2px; }
+  .alert-footer {
+    margin-top:14px; font-size:11px;
+    color:rgba(145,70,255,.45); letter-spacing:1px; text-transform:uppercase;
+  }
+
+  /* Прогрес */
+  .alert-progress {
+    position:absolute; bottom:0; left:0; right:0;
+    height:3px; background:rgba(145,70,255,.15);
+    border-radius:0 0 20px 20px; overflow:hidden;
+  }
+  .alert-progress-bar {
+    height:100%;
+    background: linear-gradient(90deg, #9146FF, #BF94FF);
+    width:100%; transform-origin:left;
+  }
+  .alert-progress-bar.run {
+    transition: transform linear;
+    transform: scaleX(0);
+  }
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <h2>⚙️ MonoDonaty Alert — налаштування</h2>
+  <p>Mono токен не знайдено. Відкрий головний сайт <b>index.html</b>, введи токен у налаштуваннях і збережи — тоді перезавантаж цю сторінку.</p>
+  <div class="url-box">
+    1. Відкрий <span>index.html</span> у тому ж браузері<br>
+    2. Введи Monobank токен → натисни <span>Зберегти</span><br>
+    3. Поверніся сюди → F5 (або перезапусти OBS Browser Source)
+  </div>
+  <p class="hint">Токен зберігається в localStorage браузера і зчитується автоматично</p>
+</div>
+
+<div id="dbg">⬤ MonoDonaty Alert — <span id="dbgTxt">ініціалізація...</span></div>
+
+<div id="alert-wrap">
+  <div class="particles" id="particles"></div>
+  <div id="alert-card">
+    <span class="alert-icon">🎉</span>
+    <div class="alert-label">Донат</div>
+    <div class="alert-name"   id="aName">Ім'я</div>
+    <div class="alert-amount" id="aAmount">100 грн</div>
+    <div class="alert-divider"></div>
+    <div class="alert-comment" id="aComment" style="display:none"></div>
+    <div class="alert-footer">Monobank · Дякуємо за підтримку!</div>
+    <div class="alert-progress"><div class="alert-progress-bar" id="aProg"></div></div>
+  </div>
+</div>
+
+<script>
+// ── URL параметри ─────────────────────────────────────────────────
+var P = new URLSearchParams(location.search);
+var DEBUG_MODE = P.has('debug') || P.has('test');
+if (DEBUG_MODE) document.body.classList.add('debug');
+
+function dbg(txt) {
+  var el = document.getElementById('dbgTxt');
+  if (el) el.textContent = txt;
+}
+
+// ── Читаємо налаштування з localStorage ──────────────────────────
+var _cfg = {};
+try { _cfg = JSON.parse(localStorage.getItem("mono_cfg") || "{}"); } catch(e) {}
+
+var TOKEN    = _cfg.monoToken  || "";
+var ACCOUNT  = _cfg.accountId  || "";
+var MIN_AMT  = parseFloat(_cfg.minAmt    || "1");
+var INTERVAL = Math.max(61, parseInt(_cfg.interval || "61", 10));
+var SHOW_MS  = parseInt(_cfg.alertShow || "7000", 10);
+
+// URL-параметри як запасний варіант
+if (!TOKEN)        TOKEN    = P.get("token")   || "";
+if (!ACCOUNT)      ACCOUNT  = P.get("account") || "";
+if (P.get("min"))      MIN_AMT  = parseFloat(P.get("min"));
+if (P.get("interval")) INTERVAL = Math.max(61, parseInt(P.get("interval"), 10));
+if (P.get("show"))     SHOW_MS  = parseInt(P.get("show"), 10);
+
+// ── Підказка якщо немає токена ────────────────────────────────────
+if (!TOKEN) {
+  document.getElementById("setup").classList.add("visible");
+  dbg("немає токена — відкрий index.html і збережи налаштування");
+} else {
+  dbg("токен ✓ · очікуємо донати...");
+}
+
+// ── Черга ─────────────────────────────────────────────────────────
+var queue = [], showing = false, hideTimer = null;
+
+function enqueue(d) { queue.push(d); if (!showing) next(); }
+
+function next() {
+  if (!queue.length) { showing = false; dbg("токен ✓ · очікуємо донати..."); return; }
+  showing = true; showAlert(queue.shift());
+}
+
+function showAlert(d) {
+  dbg("▶ показуємо алерт: " + (d.name||'?') + ' ' + fmt(d.amount, d.currency));
+  var wrap = document.getElementById("alert-wrap");
+  document.getElementById("aName").textContent   = d.name || "Анонім";
+  document.getElementById("aAmount").textContent = fmt(d.amount, d.currency);
+  var cmt = document.getElementById("aComment");
+  if (d.comment && d.comment.trim()) { cmt.textContent = d.comment.trim(); cmt.style.display = "block"; }
+  else cmt.style.display = "none";
+
+  var bar = document.getElementById("aProg");
+  wrap.classList.remove("show","hide"); bar.classList.remove("run");
+  bar.style.transitionDuration = "";
+  void wrap.offsetWidth;
+
+  spawnParticles();
+  wrap.classList.add("show");
+  setTimeout(function() { bar.classList.add("run"); bar.style.transitionDuration = SHOW_MS+"ms"; }, 60);
+
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(function() {
+    wrap.classList.replace("show","hide");
+    setTimeout(function() { wrap.classList.remove("hide"); setTimeout(next, 500); }, 420);
+  }, SHOW_MS);
+}
+
+function fmt(amount, cur) {
+  var n = parseFloat(amount);
+  cur = cur || "грн";
+  if (isNaN(n)) return (amount||"?")+" "+cur;
+  return n.toLocaleString("uk-UA",{minimumFractionDigits: n%1===0?0:2})+" "+cur;
+}
+
+// ── Частинки ──────────────────────────────────────────────────────
+function spawnParticles() {
+  var c = document.getElementById("particles"); c.innerHTML = "";
+  var colors = ["#9146FF","#BF94FF","#D4AAFF","#fff","#6B2FD4"];
+  for (var i=0;i<20;i++) (function(){
+    var p = document.createElement("div"); p.className = "particle";
+    var sz=4+Math.random()*7, delay=Math.random()*180, dur=550+Math.random()*550;
+    var ang=Math.random()*360, dist=90+Math.random()*130;
+    p.style.cssText="left:50%;top:50%;width:"+sz+"px;height:"+sz+"px;background:"+colors[0|Math.random()*colors.length];
+    c.appendChild(p);
+    setTimeout(function(){
+      var rad=ang*Math.PI/180;
+      p.style.transition="transform "+dur+"ms ease-out,opacity "+dur+"ms ease-out";
+      p.style.opacity="1";
+      p.style.transform="translate(calc(-50% + "+Math.cos(rad)*dist+"px),calc(-50% + "+Math.sin(rad)*dist+"px))";
+      setTimeout(function(){ p.style.opacity="0"; }, dur*.45);
+    }, delay);
+  })();
+}
+
+// ── Синхронізація з index.html ────────────────────────────────────
+var seenIds = new Set();
+
+function _onDonationMsg(data) {
+  if (!data || !data.event || data.event.type !== 'MonobankDonation') return;
+  var d  = data.data;
+  var id = d.id || ('bc_' + (d._ts || Date.now()));
+  if (seenIds.has(id)) { dbg('дублікат пропущено: ' + id); return; }
+  seenIds.add(id);
+  if (seenIds.size > 300) { var a = Array.from(seenIds); seenIds = new Set(a.slice(a.length - 200)); }
+  dbg('отримано донат від index.html: ' + (d.name || d.user_name || '?'));
+  enqueue({
+    name:     d.name || d.user_name || 'Анонім',
+    amount:   d.amount,
+    currency: d.currency || 'грн',
+    comment:  d.comment || d.monoComment || ''
+  });
+}
+
+// BroadcastChannel — для вкладок у тому ж браузері
+var _bc = null;
+try {
+  _bc = new BroadcastChannel('monobank_donations');
+  _bc.onmessage = function(e) {
+    try { _onDonationMsg(e.data); } catch(err) {}
+  };
+  dbg('BroadcastChannel активний · очікуємо донати...');
+} catch(e) {
+  dbg('BroadcastChannel недоступний · polling fallback');
+}
+
+// localStorage storage event — fallback між різними вікнами браузера
+window.addEventListener('storage', function(e) {
+  if (e.key !== 'mono_last_donation' || !e.newValue) return;
+  try { _onDonationMsg(JSON.parse(e.newValue)); } catch(err) {}
+});
+
+// ── Monobank self-polling (fallback коли index.html не відкритий) ─
+var accountId = ACCOUNT, pollTimer = null;
+
+function scheduleNext(sec) {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(poll, (sec || INTERVAL) * 1000);
+}
+
+async function poll() {
+  if (!TOKEN) return;
+  if (!accountId) {
+    try {
+      var info = await monoGet("https://api.monobank.ua/personal/client-info");
+      var accs = info.accounts || [];
+      var acc  = accs.find(function(a){ return a.currencyCode===980; }) || accs[0];
+      if (acc) accountId = acc.id;
+    } catch(e) { scheduleNext(30); return; }
+  }
+  try {
+    var now=Math.floor(Date.now()/1000), from=now-(INTERVAL*2+120);
+    var txs = await monoGet(
+      "https://api.monobank.ua/personal/statement/"+accountId+"/"+from+"/"+now
+    );
+    if (!Array.isArray(txs)) { scheduleNext(INTERVAL); return; }
+    txs.filter(function(tx){
+      return tx.amount>0 && !seenIds.has(tx.id) && Math.abs(tx.amount)/100>=MIN_AMT;
+    }).reverse().forEach(function(tx){
+      seenIds.add(tx.id);
+      enqueue({
+        name:     extractName(tx.description||""),
+        amount:   Math.abs(tx.amount)/100,
+        currency: ({980:"грн",840:"USD",978:"EUR"})[tx.currencyCode]||"грн",
+        comment:  tx.comment||""
+      });
+    });
+  } catch(e) {
+    if (e.status===429){ scheduleNext(65); return; }
+  }
+  scheduleNext(INTERVAL);
+}
+
+function monoGet(url) {
+  return fetch(url,{headers:{"X-Token":TOKEN}}).then(function(r){
+    if (r.status===429){ var e=new Error("429"); e.status=429; throw e; }
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  });
+}
+
+function extractName(desc) {
+  if (!desc) return "Анонім";
+  var m=desc.match(/[ВвVv][іiIi][дdDd][:\s]+(.+)/);
+  return m?m[1].trim().slice(0,40):(desc.slice(0,40)||"Анонім");
+}
+
+// ── ?test — показати тестовий алерт при завантаженні ─────────────
+if (P.has('test')) {
+  setTimeout(function() {
+    _onDonationMsg({
+      event: { type: 'MonobankDonation' },
+      data: {
+        id:       'page_test_' + Date.now(),
+        name:     'Тестовий Донат',
+        amount:   250,
+        currency: 'грн',
+        comment:  'Алерт працює! 🎉'
+      }
+    });
+  }, 800);
+}
+
+// ── Старт polling (fallback) ──────────────────────────────────────
+if (TOKEN) scheduleNext(5);
+</script>
+</body>
+</html>
