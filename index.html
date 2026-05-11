@@ -1638,40 +1638,49 @@
 
         function skipSong() { log("⏭️ SKIP", "warn"); playNext(); }
 
-        // ── Ad-mute: глушимо звук поки грає реклама ─────────────────────────
-        // Стратегія: стежимо за getCurrentTime() — під час реклами embedded
-        // YouTube player повертає state=1 (playing) але getCurrentTime() не
-        // рухається і залишається близько до 0. getDuration() НЕ змінюється
-        // під час реклами, тому попередній метод не працював.
+        // ── Ad-mute: надійний детектор реклами через video_id ────────────────
+        // Стратегія: getVideoData().video_id під час реклами повертає порожній
+        // рядок або ID відмінний від поточної пісні — це єдиний 100% надійний
+        // спосіб. Старий метод (frozen getCurrentTime) ламався при зміні пісні.
         let adMuted       = false;
         let savedVolume   = 100;
-        let adLastTime    = -1;
-        let adFrozenCount = 0;
+        let adConfirmCount = 0;   // потрібно N підряд підтверджень щоб не флікати
+        let adClearCount   = 0;
 
         function onPlayerApiChange(e) {
             checkAdState();
         }
 
         function checkAdState() {
-            if (!player || typeof player.getCurrentTime !== 'function') return;
+            if (!player || typeof player.getVideoData !== 'function') return;
             try {
-                const state    = player.getPlayerState(); // 1 = playing
-                const curTime  = player.getCurrentTime();
-                const expected = currentSongInfo ? currentSongInfo.duration : 0;
+                const state = player.getPlayerState(); // 1=playing, 2=paused, 3=buffering
 
-                if (state === 1 && expected > 0) {
-                    if (curTime === adLastTime) {
-                        adFrozenCount++;
-                    } else {
-                        adFrozenCount = 0;
-                    }
-                    adLastTime = curTime;
+                // Якщо плеєр зупинений або немає поточної пісні — нічого не робимо
+                if (state === -1 || state === 0 || state === 5 || !currentSongInfo) {
+                    adConfirmCount = 0;
+                    adClearCount   = 0;
+                    return;
+                }
 
-                    // Вважаємо рекламою якщо час не рухається 3+ цикли (~2.4с)
-                    // і ще близько до початку (< 2с)
-                    const adNow = adFrozenCount >= 3 && curTime < 2;
+                // Головний метод: порівнюємо video_id плеєра з очікуваним ID пісні
+                let playerVideoId = '';
+                try {
+                    const vd = player.getVideoData();
+                    playerVideoId = (vd && vd.video_id) ? vd.video_id : '';
+                } catch(e) {}
 
-                    if (adNow && !adMuted) {
+                const expectedId = currentSongInfo ? currentSongInfo.id : '';
+                // Реклама = плеєр грає, але video_id не співпадає з піснею
+                const isAdNow = (state === 1 || state === 3) &&
+                                expectedId &&
+                                playerVideoId !== expectedId;
+
+                if (isAdNow) {
+                    adClearCount = 0;
+                    adConfirmCount++;
+                    // Чекаємо 2 підряд підтвердження (~1.6с) щоб не реагувати на миттєвий перехід
+                    if (adConfirmCount >= 2 && !adMuted) {
                         try { savedVolume = player.getVolume(); } catch(e) { savedVolume = 100; }
                         player.mute();
                         adMuted = true;
@@ -1680,23 +1689,26 @@
                         if (ws && ws.readyState === WebSocket.OPEN) {
                             ws.send(JSON.stringify({ request: "BroadcastEvent", name: "AD_MUTE", data: { type: 'AD_MUTE', muted: true, ts: Date.now() }, id: "AdMute" }));
                         }
-                        log(`🔇 Реклама (curTime=${curTime.toFixed(2)}s frozen=${adFrozenCount}) — звук заглушено`, 'warn');
-                    } else if (!adNow && adMuted && curTime > 2) {
-                        player.unMute();
-                        try { player.setVolume(savedVolume); } catch(e) {}
-                        adMuted = false;
-                        adFrozenCount = 0;
-                        try { localStorage.setItem('ytm_ad_playing', '0'); } catch(e) {}
-                        try { localStorage.setItem('ytm_now_playing', JSON.stringify({ type: 'AD_UNMUTE', muted: false, ts: Date.now() })); } catch(e) {}
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({ request: "BroadcastEvent", name: "AD_UNMUTE", data: { type: 'AD_UNMUTE', muted: false, ts: Date.now() }, id: "AdUnmute" }));
-                        }
-                        log('🔊 Реклама закінчилась — звук відновлено', 'warn');
+                        log(`🔇 Реклама (playerVideoId="${playerVideoId}" != expected="${expectedId}") — звук заглушено`, 'warn');
                     }
                 } else {
-                    // Плеєр не грає або немає поточної пісні — скидаємо лічильник
-                    adFrozenCount = 0;
-                    adLastTime = -1;
+                    adConfirmCount = 0;
+                    if (adMuted) {
+                        adClearCount++;
+                        // Чекаємо 2 підряд "чисто" перед тим як зняти мут
+                        if (adClearCount >= 2) {
+                            player.unMute();
+                            try { player.setVolume(savedVolume); } catch(e) {}
+                            adMuted      = false;
+                            adClearCount = 0;
+                            try { localStorage.setItem('ytm_ad_playing', '0'); } catch(e) {}
+                            try { localStorage.setItem('ytm_now_playing', JSON.stringify({ type: 'AD_UNMUTE', muted: false, ts: Date.now() })); } catch(e) {}
+                            if (ws && ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({ request: "BroadcastEvent", name: "AD_UNMUTE", data: { type: 'AD_UNMUTE', muted: false, ts: Date.now() }, id: "AdUnmute" }));
+                            }
+                            log(`🔊 Реклама закінчилась (playerVideoId="${playerVideoId}" == expected="${expectedId}") — звук відновлено`, 'warn');
+                        }
+                    }
                 }
             } catch(e) {}
         }
