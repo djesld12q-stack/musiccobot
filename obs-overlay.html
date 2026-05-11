@@ -432,7 +432,6 @@
 
   // ── localStorage Polling ──────────────────────────────────────────────────
   let lastUpdate = 0;
-  let lastNowPlayingTs = 0; // timestamp останнього NOW_PLAYING — захист від хибних пауз
   let updateCheckInterval = null;
 
   function log(msg) {
@@ -442,75 +441,53 @@
   function checkForSongUpdate() {
     try {
       const stored = localStorage.getItem('ytm_now_playing');
-      if (!stored) return;
-
+      if (!stored) {
+        // log('No localStorage data yet');
+        return;
+      }
+      
       const data = JSON.parse(stored);
-
-      // Skip already-processed events (same approach as mini-player)
-      if (data.ts && data.ts === lastUpdate) return;
-      lastUpdate = data.ts || 0;
-
-      log('Processing: ' + data.type);
-
-      if (data.type === 'NOW_PLAYING') {
-        if (data.stopped || !data.id) {
-          log('Hiding song (stopped)');
-          hideSong();
-        } else {
-          log('Showing song: ' + data.title);
-          lastNowPlayingTs = data.ts || Date.now(); // запам'ятовуємо час NOW_PLAYING
-          showSong(data);
-        }
-      }
-      else if (data.type === 'NOW_PAUSED') {
-        // Ігноруємо NOW_PAUSED якщо він старший за останній NOW_PLAYING
-        // (це захист від паузи при переключенні пісень)
-        if (currentSongId && data.ts >= (lastNowPlayingTs || 0)) {
-          log('Setting paused state');
-          setPausedState(true);
-        } else if (currentSongId) {
-          log('⚠️ Ignoring stale NOW_PAUSED (ts:' + data.ts + ' < nowPlayingTs:' + lastNowPlayingTs + ')');
-        }
-      }
-      else if (data.type === 'NOW_RESUMED') {
-        if (currentSongId) {
-          if (data.elapsed !== undefined) elapsed = data.elapsed;
-          log('Setting resumed state');
-          setPausedState(false);
-        }
-      }
-      else if (data.type === 'NOW_STOPPED') {
-        log('Hiding song (stopped)');
-        hideSong();
-      }
-      else if (data.type === 'NOW_SYNC') {
-        if (!currentSongId && data.id) showSong(data);
-        // NOW_SYNC з paused:true ігноруємо якщо він прийшов одразу після зміни пісні
-        else if (data.id === currentSongId) {
-          if (data.paused && data.ts < (lastNowPlayingTs || 0) + 2000) {
-            log('⚠️ Ignoring NOW_SYNC paused=true right after song change');
+      const now = Date.now();
+      
+      log('Data from localStorage: ' + JSON.stringify(data));
+      
+      // Only process if data was updated recently (within last 3 seconds)
+      if (data.ts && (now - data.ts) < 3000) {
+        if (data.ts === lastUpdate) return; // No update
+        lastUpdate = data.ts;
+        
+        log('Processing: ' + data.type);
+        
+        if (data.type === 'NOW_PLAYING') {
+          if (data.stopped || !data.id) {
+            log('Hiding song (stopped)');
+            hideSong();
           } else {
-            setPausedState(!!data.paused);
+            log('Showing song: ' + data.title);
+            showSong(data);
           }
         }
-      }
-      else if (data.type === 'AD_MUTE') {
-        if (audioPlayer && audioReady && !obsAdMuted) {
-          audioPlayer.setVolume(0);
-          log('🔇 [LS] Реклама — аудіо заглушено');
+        else if (data.type === 'NOW_PAUSED') {
+          if (card.classList.contains('visible')) {
+            log('Setting paused state');
+            setPausedState(true);
+          }
         }
-        obsAdMuted = true;
-      }
-      else if (data.type === 'AD_UNMUTE') {
-        if (audioPlayer && audioReady && obsAdMuted) {
-          audioPlayer.setVolume(100);
-          log('🔊 [LS] Реклама закінчилась — аудіо відновлено');
+        else if (data.type === 'NOW_RESUMED') {
+          if (card.classList.contains('visible')) {
+            if (data.elapsed !== undefined) elapsed = data.elapsed;
+            log('Setting resumed state');
+            setPausedState(false);
+          }
         }
-        obsAdMuted = false;
+        else if (data.type === 'NOW_STOPPED') {
+          log('Hiding song (stopped)');
+          hideSong();
+        }
+        else if (data.type === 'NOW_SYNC') {
+          syncSong(data);
+        }
       }
-      // legacy (no type field)
-      else if (!data.type && data.id) { showSong(data); }
-      else if (!data.type && data.stopped) { hideSong(); }
     } catch (err) {
       console.error('[OBS Overlay] Error reading localStorage:', err);
     }
@@ -524,37 +501,6 @@
   
   // Also check immediately on load
   setTimeout(checkForSongUpdate, 500);
-
-  // ── OBS Reload Trigger ────────────────────────────────────────────────────
-  // Коли mini-player.html надсилає CMD_PLAY, він записує ytm_obs_reload.
-  // Ми відстежуємо цей ключ і робимо location.reload() — це еквівалентно
-  // натисканню "Очистити кеш поточної сторінки" в OBS Studio.
-  // Після перезавантаження overlay сам знайде поточну пісню через localStorage
-  // і почне відтворення з потрібного місця.
-  let lastObsReloadTs = localStorage.getItem('ytm_obs_reload')
-    ? (JSON.parse(localStorage.getItem('ytm_obs_reload') || '{}').ts || 0)
-    : 0;
-
-  // Якщо сторінка щойно завантажилась після reload — прибираємо мітку паузи
-  localStorage.removeItem('ytm_obs_paused');
-
-  setInterval(function() {
-    try {
-      const raw = localStorage.getItem('ytm_obs_reload');
-      if (!raw) return;
-      const obj = JSON.parse(raw);
-      if (!obj || !obj.ts) return;
-      // Новий сигнал (не той що вже бачили)
-      if (obj.ts > lastObsReloadTs) {
-        lastObsReloadTs = obj.ts;
-        log('🔄 OBS reload trigger received — reloading page to clear cache...');
-        // Невелика затримка щоб index.html встиг оновити ytm_now_playing
-        setTimeout(function() {
-          window.location.reload(true);
-        }, 350);
-      }
-    } catch(e) {}
-  }, 200);
 
   // ── WebSocket Fallback (якщо localStorage не працює) ──────────────────────
   let ws = null;
@@ -609,20 +555,17 @@
               hideSong();
             } else {
               log('▶️ Showing song: ' + inner.title);
-              lastNowPlayingTs = inner.ts || Date.now();
               showSong(inner);
             }
           }
           else if (inner.type === 'NOW_PAUSED') {
-            if (currentSongId && (inner.ts || 0) >= (lastNowPlayingTs || 0)) {
+            if (card.classList.contains('visible')) {
               log('⏸ Setting paused state');
               setPausedState(true);
-            } else if (currentSongId) {
-              log('⚠️ [WS] Ignoring stale NOW_PAUSED after song change');
             }
           }
           else if (inner.type === 'NOW_RESUMED') {
-            if (currentSongId) {
+            if (card.classList.contains('visible')) {
               if (inner.elapsed !== undefined) elapsed = inner.elapsed;
               log('▶️ Setting resumed state');
               setPausedState(false);
@@ -634,31 +577,8 @@
           }
           else if (inner.type === 'NOW_SYNC') {
             log('🔄 Syncing song');
-            if (!currentSongId && inner.id) showSong(inner);
-            else if (inner.id === currentSongId) {
-              if (inner.paused && (inner.ts || 0) < (lastNowPlayingTs || 0) + 2000) {
-                log('⚠️ [WS] Ignoring NOW_SYNC paused=true right after song change');
-              } else {
-                setPausedState(!!inner.paused);
-              }
-            }
+            syncSong(inner);
           }
-          else if (inner.type === 'AD_MUTE') {
-            if (audioPlayer && audioReady) {
-              audioPlayer.setVolume(0);
-              log('🔇 [WS] Реклама — аудіо заглушено');
-            }
-            obsAdMuted = true;
-          }
-          else if (inner.type === 'AD_UNMUTE') {
-            if (audioPlayer && audioReady) {
-              audioPlayer.setVolume(100);
-              log('🔊 [WS] Реклама закінчилась — аудіо відновлено');
-            }
-            obsAdMuted = false;
-          }
-          // legacy (no type field)
-          else if (!inner.type && inner.stopped) { hideSong(); }
         } catch (err) {
           log('❌ Error parsing WebSocket message: ' + err.message);
           console.error('Parse error details:', err);
@@ -683,16 +603,13 @@
 
   // Try WebSocket after a delay (in case localStorage works)
   const isOBSBrowser = navigator.userAgent.includes('CEF');
-  // GitHub Pages / cross-origin: localStorage won't have data from index.html
-  const isCrossOrigin = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-  const wsDelay = (isOBSBrowser || isCrossOrigin) ? 0 : 2000;
+  const wsDelay = isOBSBrowser ? 0 : 2000; // No delay in OBS
   
   setTimeout(() => {
     const stored = localStorage.getItem('ytm_now_playing');
-    if (!stored || isOBSBrowser || isCrossOrigin) {
-      if (!stored && !isCrossOrigin) log('No localStorage data found, trying WebSocket...');
+    if (!stored || isOBSBrowser) {
+      if (!stored) log('No localStorage data found, trying WebSocket...');
       if (isOBSBrowser) log('OBS Browser Source detected - using WebSocket only');
-      if (isCrossOrigin) log('GitHub Pages detected - connecting WebSocket immediately');
       connectWebsocket();
     }
   }, wsDelay);
@@ -771,26 +688,6 @@
   function onAudioPlayerStateChange(e) {
     const stateNames = ['UNSTARTED', 'ENDED', 'PLAYING', 'PAUSED', 'BUFFERING', 'CUED'];
     log('🎵 Audio player state: ' + stateNames[e.data] + ' (id: ' + currentAudioId + ')');
-
-    // YT.PlayerState: -1=UNSTARTED, 0=ENDED, 1=PLAYING, 2=PAUSED, 3=BUFFERING, 5=CUED
-    // Під час loadVideoById YouTube автоматично кидає PAUSED/BUFFERING —
-    // ігноруємо їх якщо overlay не вважає пісню на паузі (isPaused = false)
-    if (e.data === 2 /* PAUSED */ && !isPaused && currentAudioId) {
-      const timeSincePlay = Date.now() - (lastNowPlayingTs || 0);
-      if (timeSincePlay < 5000) {
-        // Автопауза від YouTube при завантаженні нової пісні — відновлюємо
-        log('🔁 YouTube auto-paused during load, resuming...');
-        setTimeout(function() {
-          if (!isPaused && audioPlayer && audioReady) {
-            audioPlayer.playVideo();
-          }
-        }, 500);
-      }
-    }
-
-    if (e.data === 0 /* ENDED */ && currentAudioId) {
-      log('🎵 Audio ended');
-    }
   }
 
   function onAudioPlayerError(e) {
@@ -924,14 +821,6 @@
       }
     }
   };
-
-  // ── Ad-mute: слухаємо сигнал реклами від index.html через localStorage ──────
-  // index.html встановлює ytm_ad_playing='1' коли детектує рекламу.
-  // Ми глушимо audioPlayer (саме його захоплює OBS як аудіо джерело).
-  let obsAdMuted = false;
-  // Ad-mute керується подіями AD_MUTE / AD_UNMUTE через WS і LS (обробники вище).
-  // setInterval-polling прибрано — він скасовував мут отриманий через WS,
-  // бо ytm_ad_playing міг ще не встигнути оновитись у localStorage.
 
   // ── Load YouTube IFrame API (if not already loaded) ────────────────────────
   if (!window.YT || !window.YT.Player) {

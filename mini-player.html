@@ -282,7 +282,6 @@
       <div class="status-row">
         <div class="dot"></div>
         <span class="status-label" id="status-label">Очікування...</span>
-        <span id="ad-badge" style="display:none;margin-left:6px;font-size:10px;font-weight:700;background:#ff4d4d;color:#fff;border-radius:3px;padding:1px 5px;letter-spacing:.5px;">AD</span>
       </div>
       <div class="title-wrap">
         <span class="song-title" id="song-title">–</span>
@@ -429,15 +428,6 @@
         if (!currentId && d.id) showSong(d);
         else if (d.id === currentId) updatePauseState(!!d.paused);
       }
-      else if (d.type === 'AD_MUTE') {
-        // Показуємо що грає реклама — ховаємо пісню або додаємо індикатор
-        const adBadge = document.getElementById('ad-badge');
-        if (adBadge) adBadge.style.display = 'block';
-      }
-      else if (d.type === 'AD_UNMUTE') {
-        const adBadge = document.getElementById('ad-badge');
-        if (adBadge) adBadge.style.display = 'none';
-      }
       // legacy (no type field)
       else if (!d.type && d.id) { showSong(d); }
       else if (!d.type && d.stopped) { hideSong(); }
@@ -460,16 +450,6 @@
 
     // 2) localStorage + storage event (fallback)
     localStorage.setItem('ytm_mini_cmd', JSON.stringify(msg));
-
-    // 3) OBS reload trigger — при CMD_PLAY записуємо сигнал для obs-overlay
-    //    щоби він зробив location.reload() і прибрав "застиглий" кеш
-    if (type === 'CMD_PLAY') {
-      localStorage.setItem('ytm_obs_reload', JSON.stringify({ ts: Date.now() }));
-    }
-    // При паузі — записуємо стан паузи щоб після reload OBS знав що грати
-    if (type === 'CMD_PAUSE') {
-      localStorage.setItem('ytm_obs_paused', '1');
-    }
 
     // Optimistic UI для паузи
     if (type === 'CMD_PAUSE') updatePauseState(true);
