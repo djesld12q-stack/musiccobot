@@ -512,6 +512,37 @@
   // Also check immediately on load
   setTimeout(checkForSongUpdate, 500);
 
+  // ── OBS Reload Trigger ────────────────────────────────────────────────────
+  // Коли mini-player.html надсилає CMD_PLAY, він записує ytm_obs_reload.
+  // Ми відстежуємо цей ключ і робимо location.reload() — це еквівалентно
+  // натисканню "Очистити кеш поточної сторінки" в OBS Studio.
+  // Після перезавантаження overlay сам знайде поточну пісню через localStorage
+  // і почне відтворення з потрібного місця.
+  let lastObsReloadTs = localStorage.getItem('ytm_obs_reload')
+    ? (JSON.parse(localStorage.getItem('ytm_obs_reload') || '{}').ts || 0)
+    : 0;
+
+  // Якщо сторінка щойно завантажилась після reload — прибираємо мітку паузи
+  localStorage.removeItem('ytm_obs_paused');
+
+  setInterval(function() {
+    try {
+      const raw = localStorage.getItem('ytm_obs_reload');
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.ts) return;
+      // Новий сигнал (не той що вже бачили)
+      if (obj.ts > lastObsReloadTs) {
+        lastObsReloadTs = obj.ts;
+        log('🔄 OBS reload trigger received — reloading page to clear cache...');
+        // Невелика затримка щоб index.html встиг оновити ytm_now_playing
+        setTimeout(function() {
+          window.location.reload(true);
+        }, 350);
+      }
+    } catch(e) {}
+  }, 200);
+
   // ── WebSocket Fallback (якщо localStorage не працює) ──────────────────────
   let ws = null;
   let wsReconnectTimeout = null;

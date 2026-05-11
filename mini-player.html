@@ -451,6 +451,16 @@
     // 2) localStorage + storage event (fallback)
     localStorage.setItem('ytm_mini_cmd', JSON.stringify(msg));
 
+    // 3) OBS reload trigger — при CMD_PLAY записуємо сигнал для obs-overlay
+    //    щоби він зробив location.reload() і прибрав "застиглий" кеш
+    if (type === 'CMD_PLAY') {
+      localStorage.setItem('ytm_obs_reload', JSON.stringify({ ts: Date.now() }));
+    }
+    // При паузі — записуємо стан паузи щоб після reload OBS знав що грати
+    if (type === 'CMD_PAUSE') {
+      localStorage.setItem('ytm_obs_paused', '1');
+    }
+
     // Optimistic UI для паузи
     if (type === 'CMD_PAUSE') updatePauseState(true);
     if (type === 'CMD_PLAY')  updatePauseState(false);
