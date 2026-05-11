@@ -425,8 +425,29 @@
       else if (d.type === 'NOW_RESUMED')  { if (currentId) updatePauseState(false); }
       else if (d.type === 'NOW_STOPPED')  { hideSong(); }
       else if (d.type === 'NOW_SYNC') {
-        if (!currentId && d.id) showSong(d);
-        else if (d.id === currentId) updatePauseState(!!d.paused);
+        if (!currentId && d.id) {
+          showSong(d);
+        } else if (d.id === currentId) {
+          // Update pause state
+          updatePauseState(!!d.paused);
+
+          // Update title/author only if changed to avoid re-triggering marquee unnecessarily
+          const newTitle = d.title || 'Unknown';
+          const newAuthor = d.author || '';
+          if (titleEl.textContent !== newTitle) {
+            titleEl.classList.remove('scrolling');
+            titleEl.style.removeProperty('--sd');
+            titleEl.textContent = newTitle;
+            requestAnimationFrame(() => {
+              const overflow = titleEl.scrollWidth - titleEl.parentElement.clientWidth;
+              if (overflow > 10) {
+                titleEl.style.setProperty('--sd', '-' + (overflow + 20) + 'px');
+                titleEl.classList.add('scrolling');
+              }
+            });
+          }
+          if (authorEl.textContent !== newAuthor) authorEl.textContent = newAuthor;
+        }
       }
       // legacy (no type field)
       else if (!d.type && d.id) { showSong(d); }
