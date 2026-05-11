@@ -489,14 +489,13 @@
         }
         else if (data.type === 'AD_MUTE') {
           if (audioPlayer && audioReady && !obsAdMuted) {
-            audioPlayer.mute();
+            audioPlayer.setVolume(0);
             log('🔇 [LS] Реклама — аудіо заглушено');
           }
           obsAdMuted = true;
         }
         else if (data.type === 'AD_UNMUTE') {
           if (audioPlayer && audioReady && obsAdMuted) {
-            audioPlayer.unMute();
             audioPlayer.setVolume(100);
             log('🔊 [LS] Реклама закінчилась — аудіо відновлено');
           }
@@ -596,14 +595,13 @@
           }
           else if (inner.type === 'AD_MUTE') {
             if (audioPlayer && audioReady) {
-              audioPlayer.mute();
+              audioPlayer.setVolume(0);
               log('🔇 [WS] Реклама — аудіо заглушено');
             }
             obsAdMuted = true;
           }
           else if (inner.type === 'AD_UNMUTE') {
             if (audioPlayer && audioReady) {
-              audioPlayer.unMute();
               audioPlayer.setVolume(100);
               log('🔊 [WS] Реклама закінчилась — аудіо відновлено');
             }
@@ -865,13 +863,12 @@
       const isAd = localStorage.getItem('ytm_ad_playing') === '1';
       if (isAd && !obsAdMuted) {
         if (audioPlayer && audioReady) {
-          audioPlayer.mute();
+          audioPlayer.setVolume(0);
           log('🔇 [OBS] Реклама — аудіо заглушено');
         }
         obsAdMuted = true;
       } else if (!isAd && obsAdMuted) {
         if (audioPlayer && audioReady) {
-          audioPlayer.unMute();
           audioPlayer.setVolume(100);
           log('🔊 [OBS] Реклама закінчилась — аудіо відновлено');
         }
