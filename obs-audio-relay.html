@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YTM Audio Relay</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0a0c;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Mixer indicator (visible in OBS mixer panel) ── */
+#mixer-label {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(0,0,0,0.72);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  z-index: 10;
+}
+
+#mixer-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #444;
+  flex-shrink: 0;
+  transition: background 0.4s;
+}
+#mixer-dot.playing  { background: #00ff88; box-shadow: 0 0 6px #00ff8899; }
+#mixer-dot.paused   { background: #f0b429; }
+#mixer-dot.stopped  { background: #ff4d4d; }
+#mixer-dot.waiting  { background: #555; animation: pulse 1.8s ease-in-out infinite; }
+
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+#mixer-title {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 80px);
+  letter-spacing: 0.02em;
+}
+
+#mixer-state {
+  margin-left: auto;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Hidden YouTube iframe (audio only — OBS captures it) ── */
+#yt-container {
+  position: fixed;
+  width: 1px; height: 1px;
+  opacity: 0.01;           /* nearly invisible but OBS audio still captured */
+  pointer-events: none;
+  overflow: hidden;
+  top: -9999px; left: -9999px;
+}
+</style>
+</head>
+<body>
+
+<!-- Minimal OBS mixer indicator -->
+<div id="mixer-label">
+  <div id="mixer-dot" class="waiting"></div>
+  <div id="mixer-title">YTM Audio Relay — waiting...</div>
+  <div id="mixer-state">⏳ connecting</div>
+</div>
+
+<!-- Hidden YouTube player -->
+<div id="yt-container">
+  <div id="yt-player"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  Config — read URL params (same as now-playing-widget)
+// ─────────────────────────────────────────────
+const params       = new URLSearchParams(window.location.search);
+const WS_PORT      = params.get('port') || params.get('wsPort') || localStorage.getItem('ytm_ws_port') || '8080';
+const WS_PASS      = params.get('pass') || params.get('password') || params.get('wsPass') || localStorage.getItem('ytm_ws_pass') || '';
+const STORAGE_KEY  = 'ytm_now_playing_widget_state';
+const CHANNEL_NAME = 'ytm_now_playing_widget';
+const STALE_MS     = 3500;
+
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+let ytPlayer       = null;
+let ytReady        = false;
+let currentId      = null;
+let currentState   = null;   // last NOW_PLAYING_STATE payload
+let ws             = null;
+let wsReconnect    = null;
+let lastStateAt    = 0;
+
+const dot    = document.getElementById('mixer-dot');
+const label  = document.getElementById('mixer-title');
+const stateEl= document.getElementById('mixer-state');
+
+// ─────────────────────────────────────────────
+//  UI helpers
+// ─────────────────────────────────────────────
+function setIndicator(mode, title, stateText) {
+  dot.className = mode;   // waiting | playing | paused | stopped
+  label.textContent = title;
+  stateEl.textContent = stateText;
+}
+
+// ─────────────────────────────────────────────
+//  YouTube IFrame API
+// ─────────────────────────────────────────────
+(function loadYTApi() {
+  const s = document.createElement('script');
+  s.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(s);
+})();
+
+window.onYouTubeIframeAPIReady = function () {
+  ytPlayer = new YT.Player('yt-player', {
+    width: '1', height: '1',
+    playerVars: {
+      enablejsapi: 1,
+      autoplay: 0,
+      controls: 0,
+      rel: 0,
+      iv_load_policy: 3,
+      modestbranding: 1,
+      origin: window.location.origin
+    },
+    events: {
+      onReady: () => {
+        ytReady = true;
+        ytPlayer.setVolume(100);
+        // If we already received a song before the player was ready, load it now
+        if (currentState && currentState.hasSong && !currentState.isStopped) {
+          loadSong(currentState);
+        }
+      },
+      onStateChange: (e) => {
+        // YT.PlayerState: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+        if (e.data === 1) {
+          setIndicator('playing',
+            currentState ? (currentState.title || 'Playing') : 'Playing',
+            '▶ playing');
+        } else if (e.data === 2) {
+          setIndicator('paused',
+            currentState ? (currentState.title || 'Paused') : 'Paused',
+            '⏸ paused');
+        } else if (e.data === 0) {
+          // ended — main index.html will push the next song via WS
+          setIndicator('stopped', 'Waiting for next track…', '⏹ ended');
+        }
+      },
+      onError: () => {
+        setIndicator('stopped', '⚠ Playback error — waiting for next track', '⚠ error');
+      }
+    }
+  });
+};
+
+// ─────────────────────────────────────────────
+//  Song loading / sync
+// ─────────────────────────────────────────────
+function loadSong(state) {
+  if (!ytReady || !ytPlayer || !state.id) return;
+
+  const seekTo = state.currentTime > 2 ? state.currentTime : 0;
+
+  if (state.id !== currentId) {
+    currentId = state.id;
+    if (state.isPlaying) {
+      ytPlayer.loadVideoById({ videoId: state.id, startSeconds: seekTo });
+    } else {
+      ytPlayer.cueVideoById({ videoId: state.id, startSeconds: seekTo });
+    }
+  } else {
+    // Same song — sync playback state without reloading
+    try {
+      const ytTime    = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
+      const drift     = Math.abs(ytTime - state.currentTime);
+      const ytState   = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : -1;
+
+      if (drift > 4) ytPlayer.seekTo(state.currentTime, true);
+
+      if (state.isPlaying && ytState !== 1 && ytState !== 3) {
+        ytPlayer.playVideo();
+      } else if (!state.isPlaying && ytState === 1) {
+        ytPlayer.pauseVideo();
+      }
+    } catch (err) {}
+  }
+}
+
+function handleState(state) {
+  if (!state || state.type !== 'NOW_PLAYING_STATE') return;
+
+  // Reject stale snapshots older than STALE_MS
+  if (state.updatedAt && Date.now() - state.updatedAt > STALE_MS) {
+    setIndicator('waiting', 'YTM Audio Relay — waiting...', '⏳ stale');
+    return;
+  }
+
+  lastStateAt  = Date.now();
+  currentState = state;
+
+  if (!state.hasSong || state.isStopped) {
+    if (ytReady && ytPlayer) {
+      try { ytPlayer.stopVideo(); } catch (e) {}
+    }
+    currentId = null;
+    if (state.isStopped) {
+      setIndicator('stopped', 'Stopped', '⏹ stopped');
+    } else {
+      setIndicator('waiting', 'YTM Audio Relay — waiting...', '⏳ waiting');
+    }
+    return;
+  }
+
+  // Paused / waveEffect fade → keep paused
+  const isPaused = !state.isPlaying || state.waveEffect === 'fade';
+
+  if (state.hasSong) {
+    loadSong({ ...state, isPlaying: !isPaused });
+    setIndicator(
+      isPaused ? 'paused' : 'playing',
+      (state.title || 'Unknown') + (state.author ? ' — ' + state.author : ''),
+      isPaused ? '⏸ paused' : '▶ playing'
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  WebSocket (same auth logic as widget)
+// ─────────────────────────────────────────────
+async function wsAuth(password, salt, challenge) {
+  const enc = new TextEncoder();
+  const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const sec  = b64(await crypto.subtle.digest('SHA-256', enc.encode(password + salt)));
+  return b64(await crypto.subtle.digest('SHA-256', enc.encode(sec + challenge)));
+}
+
+function wsSubscribe() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ request: 'Subscribe', events: { General: ['Custom'] }, id: 'AudioRelaySub' }));
+  }
+}
+
+function connectWS() {
+  clearTimeout(wsReconnect);
+  setIndicator('waiting', 'YTM Audio Relay — connecting…', '⏳ connecting');
+
+  ws = new WebSocket('ws://localhost:' + WS_PORT + '/');
+
+  ws.onmessage = async (e) => {
+    try {
+      const raw = JSON.parse(e.data);
+
+      // Streamer.bot Hello / auth handshake
+      if (raw.request === 'Hello') {
+        if (raw.authentication) {
+          if (!WS_PASS) return;
+          const auth = await wsAuth(WS_PASS, raw.authentication.salt, raw.authentication.challenge);
+          ws.send(JSON.stringify({ request: 'Authenticate', authentication: auth, id: 'AudioRelayAuth' }));
+        } else {
+          wsSubscribe();
+        }
+        return;
+      }
+      if (raw.id === 'AudioRelaySub') return;
+      if (raw.id === 'AudioRelayAuth') {
+        if (raw.status === 'ok') wsSubscribe();
+        return;
+      }
+
+      // Unwrap Streamer.bot custom event payload
+      let payload = null;
+      if (raw.data && typeof raw.data === 'object' && raw.data.data) {
+        try { payload = JSON.parse(raw.data.data); } catch (_) {}
+      } else if (raw.type) {
+        payload = raw;
+      }
+
+      if (payload) handleState(payload);
+    } catch (_) {}
+  };
+
+  ws.onopen = () => {
+    setIndicator('waiting', 'YTM Audio Relay — connected', '✓ ws ok');
+  };
+
+  ws.onclose = () => {
+    setIndicator('waiting', 'YTM Audio Relay — reconnecting…', '↻ reconnect');
+    wsReconnect = setTimeout(connectWS, 5000);
+  };
+}
+
+// ─────────────────────────────────────────────
+//  localStorage + BroadcastChannel fallback
+//  (same-origin tab without WS — instant sync)
+// ─────────────────────────────────────────────
+function readStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const state = JSON.parse(raw);
+      handleState(state);
+    }
+  } catch (_) {}
+}
+
+try {
+  if ('BroadcastChannel' in window) {
+    const bc = new BroadcastChannel(CHANNEL_NAME);
+    bc.onmessage = (e) => handleState(e.data);
+  }
+} catch (_) {}
+
+window.addEventListener('storage', (e) => {
+  if (e.key === STORAGE_KEY && e.newValue) {
+    try { handleState(JSON.parse(e.newValue)); } catch (_) {}
+  }
+});
+
+// ─────────────────────────────────────────────
+//  Stale-state watchdog
+// ─────────────────────────────────────────────
+setInterval(() => {
+  if (lastStateAt && Date.now() - lastStateAt > STALE_MS) {
+    setIndicator('waiting', 'YTM Audio Relay — waiting...', '⏳ no signal');
+    if (ytReady && ytPlayer) {
+      try { ytPlayer.pauseVideo(); } catch (_) {}
+    }
+  }
+}, 2000);
+
+// ─────────────────────────────────────────────
+//  Boot
+// ─────────────────────────────────────────────
+readStorage();
+connectWS();
+setInterval(readStorage, 800);
+</script>
+</body>
+</html>
