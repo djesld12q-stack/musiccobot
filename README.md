@@ -1,62 +1,58 @@
-Song Request for Streamer.bot (v1.0.0a)  
-Динамічний, самостійно розгорнутий YouTube Music‑плеєр та система Song Request, створена спеціально для Streamer.bot. Ця система працює локально у твоєму браузері, використовує власний Google API‑ключ (без сторонніх серверів) і напряму взаємодіє з чатом через вбудовані WebSockets Streamer.bot.
+# 🎵 YTM Song Request for Streamer.bot (v1.2.1)
 
-✨ Основні можливості
+A dynamic, self-hosted YouTube Music player and Song Request system built specifically for Streamer.bot. This system runs locally in your browser, uses your own Google API key (no third-party server dependencies), and communicates directly with your chat via Streamer.bot's built-in WebSockets.
 
-Без сторонніх сервісів: працює повністю локально на HTTP‑ та WebSocket‑серверах Streamer.bot. Твої дані й API‑ключі залишаються на твоєму комп’ютері.
+## ✨ Key Features
+* **No Third-Party Services:** Runs entirely locally on Streamer.bot's HTTP and WebSocket servers. Your data and API keys stay on your machine.
+* **Drag & Drop Queue:** Easily manage viewer requests by dragging and dropping tracks to change their order in real-time.
+* **Base Playlists (Fallback):** Add your favorite YouTube playlists. If the viewer queue is empty, the player will automatically shuffle and play tracks from your base playlists.
+* **Blacklist / Ban System:** Ban troll songs with one click. Banned songs are instantly skipped and removed.
+* **Multi-language Support:** UI and Bot chat responses are available in English, Polish, German, French, and Turkish.
+* **Chat Commands:** Support for standard SR commands (`!sr [link/title]`, `!skip`, `!wrongsong`, `!volume`).
+* **Auto-Skip:** Automatically skips unavailable, blocked, or deleted videos.
+* **Compact widget for OBS:** A standalone floating widget that displays the title and progress of the currently playing song. Perfect for adding to OBS! It uses Web Socket to refresh the status live.
 
-Drag & Drop черга: легко керуй запитами глядачів, перетягуючи треки для зміни їхнього порядку в реальному часі.
+## 📥 Installation & Setup
 
-Базові плейлисти (резерв): додай улюблені YouTube‑плейлисти. Якщо черга глядачів порожня, плеєр автоматично перемішує й відтворює треки з базових плейлистів.
+### Step 1: Download the files
+Download the latest `index.html`, `now-playing-widget.html`, `style.css`, `favicon.ico`, `app.js` and `translations.js` or `Source code
+(zip)` from the [Releases](https://github.com/xHackMe/ytm-song-request-streamerbot/releases) tab and save them in a dedicated folder on your PC (e.g., `C:\StreamerBot\YTM Song Request\`).
 
-Чорний список / бан: забань троль‑пісні одним кліком. Заборонені треки миттєво пропускаються й видаляються.
+### Step 2: Streamer.bot HTTP Server
+The file needs to be hosted locally to bypass browser restrictions and communicate with the API properly.
+1. Open Streamer.bot and go to **Servers/Clients -> HTTP Server**.
+2. Set the Port (default `7474`).
+3. In the **Mappings** section, click the folder icon and select the folder where you saved `index.html`.
+4. In the **PATH** field, enter a subfolder name (e.g., `ytm`).
+5. Check **Auto Start** and click **Start Server**.
+*Your player is now accessible at `http://localhost:7474/ytm/index.html`*
 
-Багатомовна підтримка: інтерфейс і відповіді бота доступні англійською, польською, німецькою, французькою та турецькою.
+### Step 3: Streamer.bot WebSocket Server
+This is required for chat commands to communicate with the web player.
+1. In Streamer.bot, go to **Servers/Clients -> WebSockets -> Server**.
+2. Set the Port to `8080` (or your preferred port).
+3. Check **Auto Start** and click **Start Server**.
 
-Чат‑команди: підтримка стандартних SR‑команд (!sr [посилання/назва], !skip, !wrongsong, !volume).
+### Step 4: Import Actions to Streamer.bot
+1. Click the **Import** button at the top of Streamer.bot.
+2. Paste the following import code into the *Import String* box and click **Import**:
 
-Авто‑пропуск: автоматично пропускає недоступні, заблоковані або видалені відео.
+<details>
+<summary><b>CLICK HERE TO SHOW IMPORT CODE</b></summary>
 
-📥 Встановлення та налаштування  
-Крок 1: Завантаж файли  
-Завантаж останні файли index.html та favicon.ico з вкладки Releases і збережи їх у окремій папці на ПК (наприклад, C:\StreamerBot\YTM\).
+<pre><code>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</code></pre>
 
-Крок 2: HTTP‑сервер Streamer.bot  
-Файл потрібно хостити локально, щоб обійти обмеження браузера й правильно працювати з API.
+</details>
 
-Відкрий Streamer.bot і зайди в Servers/Clients → HTTP Server.
+### Step 5: Final Configuration
+1. Open your browser and go to `http://localhost:7474/YTM/index.html` (or whatever you set up in Step 2).
+2. Follow the built-in, interactive tutorial.
+3. You will need a **free YouTube Data API v3 key** from Google Cloud Console (instructions provided inside the app).
 
-Встанови порт (за замовчуванням 7474).
+### Step 6: Widget (Optionjal)
+1. Open Settings > General > OBS Widget Configuration, copy the generated URL, and paste it into an OBS Browser Source. The link automatically uses your WebSocket port and password settings.
+2. Set your preferred resolution. Recommended: 400x200px
 
-У секції Mappings натисни на іконку папки й вибери папку з index.html.
 
-У полі PATH введи назву підпапки (наприклад, YTM).
-
-Постав галочку Auto Start і натисни Start Server.
-
-Тепер твій плеєр доступний за адресою: http://localhost:7474/YTM/index.html.
-
-Крок 3: WebSocket‑сервер Streamer.bot  
-Необхідний для взаємодії чат‑команд із веб‑плеєром.
-
-У Streamer.bot зайди в Servers/Clients → WebSockets → Server.
-
-Встанови порт 8080 (або інший бажаний).
-
-Постав галочку Auto Start і натисни Start Server.
-
-Крок 4: Імпорт дій у Streamer.bot
-
-Натисни кнопку Import у верхній частині Streamer.bot.
-
-Встав код імпорту у поле Import String і натисни Import.
-
-(У додатку є кнопка CLICK HERE TO SHOW IMPORT CODE).
-
-Крок 5: Фінальна конфігурація
-
-Відкрий браузер і зайди на http://localhost:7474/YTM/index.html (або адресу, яку ти вказав у Кроці 2).
-
-Пройди інтерактивний туторіал.
-
-Тобі знадобиться безкоштовний ключ YouTube Data API v3 з Google Cloud Console (інструкції є всередині додатку).
+---
+*Created by [HackMe_](https://twitch.tv/HackMe_)*

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YTM Song Request</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    
+    <link rel="stylesheet" href="style.css?v=20260511-widget30">
+</head>
+<body>
+
+    <div class="top-section" id="app-top-section">
+        <div class="panel panel-left">
+            <div class="header">
+                <div class="ex-style-001">
+                    <span data-i18n="ui_base_playlists">BASE PLAYLISTS</span>
+                    <span id="base-count" class="list-count">🎵 0</span>
+                </div>
+                <!-- Playlist manager button with i18n text, icon, and styling -->
+                <button data-action="openPlaylistManager" data-i18n="ui_manage_playlists" class="ex-style-002">📁 Manage Playlists</button>
+            </div>
+            <button id="btn-run" class="btn-start" data-action="startSystem" disabled data-i18n="ui_btn_downloading">⏳ DOWNLOADING DATABASE...</button>
+            
+            <div class="ex-style-003">
+                <input type="text" id="base-search" data-i18n-placeholder="ui_search_base" placeholder="🔍 Search track in base (title or author)..." data-input-action="renderBaseList">
+            </div>
+
+            <div class="list-container" id="base-list"></div>
+        </div>
+
+        <div class="main">
+            <div class="config-panel">
+                <div class="config-left">
+                    <div id="status" data-i18n="ui_bot_connecting" class="ex-style-004">🔴 Connecting to Bot...</div>
+                    <div id="api-status-ui" data-i18n="ui_api_unknown" class="ex-style-005">⚪ API Status Unknown</div>
+                </div>
+
+                <div class="config-center">
+                    <label class="switch-large" data-i18n-title="ui_sr_toggle_title" title="Enable or disable viewer requests">
+                        <input type="checkbox" id="sr-toggle-cb" data-change-action="toggleSR">
+                        <span class="slider-large"></span>
+                    </label>
+                    <span id="sr-status-text" class="ex-style-006">!SR OFF</span>
+                </div>
+                
+                <div class="config-right">
+                    <button class="btn-config highlight ex-style-007" data-action="openSettings">⚙️</button>
+                </div>
+            </div>
+            
+            <div class="player-wrapper">
+                <div id="player"></div>
+            </div>
+            
+            <div id="now-playing-title" data-i18n="ui_waiting_start">Waiting for start</div>
+            <div id="now-playing-meta">---</div>
+
+            <div class="controls-bar">
+                <button class="btn-ctrl" data-action="prevSong" data-i18n="ui_prev">⏮ PREVIOUS</button>
+                <button class="btn-ctrl btn-play" data-action="togglePlay" data-i18n="ui_play_pause">⏯ PAUSE / RESUME</button>
+                <button class="btn-ctrl ex-style-008" data-action="stopSongUI" data-i18n="ui_stop">⏹ STOP</button>
+                <button class="btn-ctrl" data-action="skipSong" data-i18n="ui_next">⏭ NEXT</button>
+            </div>
+            
+            <div class="manual-add-box ex-style-009">
+                <input type="text" id="manual-url" data-i18n-placeholder="ui_manual_url" placeholder="Paste YouTube link here...">
+                <button data-action="addManualUrl" data-i18n="ui_add">ADD</button>
+            </div>
+        </div>
+
+        <div class="panel panel-right">
+            <div class="header">
+                <div class="ex-style-001">
+                    <span data-i18n="ui_queue">Queue</span>
+                    <button data-action="openBanList" data-i18n="ui_banned_btn" class="ex-style-010">🔨 BANNED</button>
+                </div>
+                <div class="ex-style-011 queue-tools">
+                    <span id="queue-time" class="list-count" data-i18n-title="ui_queue_time_title" title="Total time of queued tracks">⏱️ 0m 0s</span>
+                    <span id="queue-count" class="list-count" data-i18n-title="ui_queue_count_title" title="Total tracks (including current)">🎵 0</span>
+                </div>
+            </div>
+            
+            <div id="now-playing-box">
+                <div data-i18n="ui_now_playing" class="ex-style-012">🎵 Now Playing</div>
+                <label class="queue-persist-switch" data-i18n-title="ui_queue_persist_title" title="Keep the current queue after refreshing the page">
+                    <span data-i18n="ui_queue_persist">Save queue</span>
+                    <input type="checkbox" id="queue-persist-cb" data-change-action="handleQueuePersistenceToggle">
+                    <span class="queue-switch-track" aria-hidden="true"></span>
+                </label>
+                <div id="now-playing-content">
+                    <div data-i18n="ui_no_song" class="ex-style-013">No song</div>
+                </div>
+            </div>
+
+            <div class="list-container" id="queue-list"></div>
+        </div>
+    </div>
+
+    <div class="bottom-zone">
+        <div class="footer">
+            <div class="footer-left">
+                YTM Song Request <span id="app-version-display" class="ex-style-014"></span><span id="holiday-message" class="holiday-message"></span>
+            </div>
+            <div class="footer-center">
+                <a href="https://twitch.tv/HackMe_" target="_blank">
+                    <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/34518793-9a28-4e44-bf46-2e455c035873-profile_image-70x70.png" class="round" alt="HackMe_ Avatar">
+                    Designed by HackMe_
+                </a>
+                <span class="separator">|</span>
+                <a href="https://streamer.bot" target="_blank">
+                    <img src="https://streamer.bot/logo.svg" alt="Streamer.bot Logo">
+                    Powered by Streamer.bot
+                </a>
+            </div>
+            <div class="footer-right">
+                <button class="btn-debug-toggle" data-action="toggleDebug" data-i18n="ui_sys_logs">🔧 SYSTEM LOGS</button>
+            </div>
+        </div>
+
+        <div id="debug-console">
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <div class="floating-btns" id="floating-btns">
+        <button id="update-btn" class="btn-update ex-style-015"></button>
+        <button class="btn-changelog" data-action="openChangelog" data-i18n="ui_changelog_btn">📜 CHANGELOG</button>
+        <button class="btn-help" data-action="openTutorial" data-i18n="ui_help_btn">❓ HELP</button>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-i18n="ui_settings" class="ex-style-016">⚙️ Settings</h3>
+                <button data-action="closeSettings" class="ex-style-017">&times;</button>
+            </div>
+            
+            <div class="settings-tabs">
+                <div class="settings-tab active" data-action="switchSettingsTab" data-action-value="general" id="tab-btn-general" data-i18n="ui_general">General</div>
+                <div class="settings-tab" data-action="switchSettingsTab" data-action-value="messages" id="tab-btn-messages" data-i18n="ui_chat_msgs">Chat Messages</div>
+            </div>
+
+            <div class="settings-body">
+                <div id="tab-content-general" class="settings-section active">
+                    
+                    <div class="settings-row">
+                        <label data-i18n="ui_language">Language</label>
+                        <select id="lang-select" class="lang-select ex-style-018" data-change-action="changeLanguage">
+                            <option value="en">English</option>
+                            <option value="pl">Polski</option>
+                            <option value="de">Deutsch</option>
+                            <option value="fr">Français</option>
+                            <option value="tr">Türkçe</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-row">
+                        <label>WebSocket Server (Streamer.bot)</label>
+                        <div class="ex-style-019">
+                            <div class="ex-style-020">
+                                <span data-i18n="ui_ws_port" class="ex-style-021">Port</span>
+                                <input type="number" id="ws-port-input" class="api-input ex-style-022" value="8080" data-input-action="updateWidgetUrlDisplay">
+                            </div>
+                            <div class="ex-style-023">
+                                <span data-i18n="ui_ws_pass" class="ex-style-021">Password (optional)</span>
+                                <input type="password" id="ws-pass-input" class="api-input ex-style-024" placeholder="********" data-input-action="updateWidgetUrlDisplay">
+                            </div>
+                            <button data-action="saveWsConfig" data-i18n="ui_save_reconnect" class="ex-style-025">Save & Reconnect</button>
+                        </div>
+                    </div>
+
+
+                    <div class="settings-row widget-config-row">
+                        <label data-i18n="ui_widget_config_title">OBS Widget Configuration</label>
+                        <div class="settings-help" data-i18n="ui_widget_config_desc">Use this generated URL as the Browser Source address in OBS.</div>
+                        <span data-i18n="ui_widget_url_label" class="ex-style-021">Widget URL for OBS</span>
+                        <div class="widget-url-box">
+                            <input type="text" id="widget-url-output" class="api-input widget-url-output" readonly>
+                            <button id="btn-copy-widget-url" data-action="copyWidgetUrl" data-i18n="ui_widget_copy" class="btn-widget-copy">Copy OBS URL</button>
+                        </div>
+                        <small data-i18n="ui_widget_url_hint" class="widget-url-hint">The link updates automatically from the current page address and WebSocket settings.</small>
+                    </div>
+
+                    <div class="settings-row sr-limits-row">
+                        <label data-i18n="ui_sr_limits_title">!SR Request Limits</label>
+                        <div class="settings-help" data-i18n="ui_sr_limits_desc">These settings control what viewer requests are accepted from chat.</div>
+                        <div class="sr-limit-grid">
+                            <div class="sr-limit-field">
+                                <span data-i18n="ui_sr_max_duration" class="ex-style-021">Maximum track length (minutes)</span>
+                                <input type="text" id="sr-max-duration-input" class="api-input sr-limit-input" inputmode="numeric" pattern="[0-9]*" maxlength="3" data-input-action="saveSongRequestSettings">
+                                <small data-i18n="ui_sr_max_duration_desc">Only positive whole minutes are allowed. Default: 15.</small>
+                            </div>
+                            <div class="sr-limit-field">
+                                <label class="settings-checkbox">
+                                    <input type="checkbox" id="sr-music-category-cb" data-change-action="saveSongRequestSettings">
+                                    <span data-i18n="ui_sr_require_music">Require YouTube Music category</span>
+                                </label>
+                                <small data-i18n="ui_sr_require_music_desc">When enabled, non-music videos are rejected from !sr requests.</small>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <div class="settings-row">
+                        <label data-i18n="ui_api_title" class="ex-style-026">🔑 Google API Key Setup</label>
+                        <div data-i18n="ui_api_safe" class="ex-style-027">Your API key is saved locally in your browser.</div>
+                        <div class="ex-style-028">
+                            <input type="password" id="api-key-input" class="api-input ex-style-029" placeholder="AIzaSy...">
+                            <button data-action="toggleApiVisibility" id="btn-show-api" data-i18n="ui_api_show" class="ex-style-030">👁 SHOW</button>
+                            <button data-action="saveApiKey" data-i18n="ui_api_save" class="ex-style-031">💾 SAVE</button>
+                        </div>
+                        <span id="api-status-icon" data-last-status="init" class="ex-style-032">⚪ Status</span>
+                        
+                        <div class="ex-style-033">
+                            <strong data-i18n="ui_api_howto_title">Where to get a free API key?</strong>
+                            <ol class="ex-style-034">
+                                <li data-i18n="ui_api_howto_1" class="ex-style-035">Log in to <a href='https://console.cloud.google.com/' target='_blank' class='ex-style-036'>Google Cloud Console</a>.</li>
+                                <li data-i18n="ui_api_howto_2" class="ex-style-035">Create a new project.</li>
+                                <li data-i18n="ui_api_howto_3" class="ex-style-035">Go to 'APIs & Services' -> 'Library'.</li>
+                                <li data-i18n="ui_api_howto_4" class="ex-style-035">Enable 'YouTube Data API v3'.</li>
+                                <li data-i18n="ui_api_howto_5" class="ex-style-035">Go to 'Credentials' -> 'Create credentials' -> 'API key'.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-content-messages" class="settings-section">
+                    <div data-i18n="ui_chat_msgs_desc" class="ex-style-037">
+                        Here you can edit the text of the messages the bot sends to your chat. Max length is 500 chars. Use variables like {user} where applicable. Messages are saved per language.
+                    </div>
+                    <div id="msg-settings-list"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="changelog-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="ex-style-016">📜 Changelog</h3>
+                <button data-action="closeChangelog" class="ex-style-017">&times;</button>
+            </div>
+            <div id="changelog-content" class="ex-style-038">
+                <div class="ex-style-039">Loading from GitHub...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ban-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="ex-style-040">
+                    <h3 data-i18n="ui_ban_title" class="ex-style-041">🔨 Blacklist</h3>
+                    <button class="btn-clear-bans" data-action="clearAllBans" data-i18n="ui_clear_bans">🧹 CLEAR ALL BANS</button>
+                </div>
+                <button data-action="closeBanList" class="ex-style-017">&times;</button>
+            </div>
+            <div id="ban-list-content" class="ex-style-042"></div>
+        </div>
+    </div>
+
+    <div id="playlist-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="ex-style-043">
+                    <h3 data-i18n="ui_manage_playlists" class="ex-style-016">📁 Manage Playlists</h3>
+                    <span data-i18n="ui_manage_playlists_desc" class="ex-style-044">Here you can add multiple playlists and remove them.</span>
+                </div>
+                <button data-action="closePlaylistManager" class="ex-style-017">&times;</button>
+            </div>
+            <div class="ex-style-045">
+                <div class="manual-add-box ex-style-046">
+                    <input type="text" id="base-playlist-url" data-i18n-placeholder="ui_playlist_url" placeholder="Paste link to new YT playlist..." class="ex-style-047">
+                    <button data-action="addBasePlaylist" data-i18n="ui_add" class="ex-style-048">ADD</button>
+                </div>
+            </div>
+            <div id="playlist-list-content" class="ex-style-049"></div>
+        </div>
+    </div>
+
+    <div id="tutorial-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-i18n="ui_tut_title" class="ex-style-016">🎓 Tutorial: First steps</h3>
+                <div class="ex-style-050">
+                    <select id="tut-lang-select" class="lang-select ex-style-051" data-change-action="changeLanguage">
+                        <option value="en">EN</option>
+                        <option value="pl">PL</option>
+                        <option value="de">DE</option>
+                        <option value="fr">FR</option>
+                        <option value="tr">TR</option>
+                    </select>
+                    <button data-action="closeTutorial" class="ex-style-017">&times;</button>
+                </div>
+            </div>
+            <div class="ex-style-038">
+                
+                <div class="tut-section">
+                    <h4 data-i18n="ui_tut_1_title">1. Interface and Features</h4>
+                    <p data-i18n="ui_tut_1_desc" class="ex-style-052">
+                        • <strong>Left Panel (Base):</strong> Here you will find tracks from your default playlists. The player randomly shuffles songs from them when the viewer queue is empty. You can add more playlists or remove the default one in the Playlist Manager (📁).<br>• <strong>Middle Panel:</strong> Bot & API status on the left, !SR switch in the center, Settings gear icon on the right, and the main YouTube player.<br>• <strong>Right Panel (!SR Queue):</strong> Viewer requests from Twitch. You can <strong>Drag & Drop</strong> tracks here with your mouse to easily change their order!
+                    </p>
+                </div>
+
+                <div class="tut-section">
+                    <h4 data-i18n="ui_tut_queue_title">Queue Saving and Request Limits</h4>
+                    <p data-i18n="ui_tut_queue_desc" class="ex-style-052">
+                        Use the small checkbox in the !SR Queue header to keep the current queue after refreshing the page. In Settings you can also change the maximum accepted !sr track length and decide whether requests must be in YouTube's Music category.
+                    </p>
+                </div>
+
+
+
+                <div class="tut-section">
+                    <h4 data-i18n="ui_tut_2_title">2. HTTP Server in Streamer.bot</h4>
+                    <p class="ex-style-052">
+                        <span data-i18n="ui_tut_2_desc_1">For the YouTube player and API to work without blocks, the file must be run through a local HTTP server. We will use the built-in server in Streamer.bot for this.</span><br><br>
+                        1. <span data-i18n="ui_tut_2_desc_2">In Streamer.bot go to the <strong>Servers/Clients</strong> -> <strong>HTTP Server</strong> tab.</span><br>
+                        2. <span data-i18n="ui_tut_2_desc_3">Set Port:</span> <input type="number" id="tut-http-port" value="7474" class="tut-input" data-input-action="updateTutLink"> <span data-i18n="ui_tut_2_desc_3b">(you can leave the suggested default!)</span><br>
+                        3. <span data-i18n="ui_tut_2_desc_4">In the <strong>Mappings</strong> field, click the folder icon and point to the folder where this HTML file is located.</span> <br><span data-i18n="ui_tut_2_desc_4b">In the PATH field, specify the subfolder name for the page:</span> <input type="text" id="tut-folder" value="ytm" class="tut-input" data-input-action="updateTutLink"><br><span data-i18n="ui_tut_2_desc_4c">(This will be part of the website address! e.g., 'ytm' = http://localhost:7474/ytm)</span><br>
+                        4. <span data-i18n="ui_tut_2_desc_5">Check <strong>Auto Start</strong> and click <strong>Start Server</strong>.</span>
+                    </p>
+                </div>
+
+                <div class="tut-section">
+                    <h4 data-i18n="ui_tut_3_title">3. WebSocket Server in Streamer.bot</h4>
+                    <p class="ex-style-052">
+                        <span data-i18n="ui_tut_3_desc_1">For chat commands (!sr, !skip, deleting, etc.) to work, you need an active WebSocket connection.</span><br><br>
+                        1. <span data-i18n="ui_tut_3_desc_2">Go to <strong>Servers/Clients</strong> -> <strong>WebSockets</strong> -> <strong>Server</strong>.</span><br>
+                        2. <span data-i18n="ui_tut_3_desc_3">Set port:</span> <input type="number" id="tut-ws-port" value="8080" class="tut-input" data-input-action="updateTutLink"> <span data-i18n="ui_tut_3_desc_3b">(you can leave the suggested default!)</span><br> 
+                        <span data-i18n="ui_tut_3_desc_pass" class="ex-style-053">* If you set a password here, remember to enter it in the Settings (⚙️) panel on the website!</span><br>
+                        3. <span data-i18n="ui_tut_3_desc_4">Check <strong>Auto Start</strong> and click <strong>Start Server</strong>.</span><br>
+                    </p>
+                </div>
+                    
+
+                <div class="tut-section">
+                    <h4 data-i18n="ui_tut_widget_title">OBS Now Playing Widget</h4>
+                    <p data-i18n="ui_tut_widget_desc" class="ex-style-052">
+                        The ready OBS widget URL is available in Settings. Copy it and paste it into an OBS Browser Source.
+                    </p>
+                </div>
+
+                <div class="tut-section">
+                    <h4 data-i18n="ui_tut_4_title">4. Import Actions to Streamer.bot</h4>
+                    <p data-i18n="ui_tut_4_desc" class="ex-style-052">
+                        For chat commands (!sr, !skip, deleting, etc.) to work, you need specific action commands and queues in Streamer.bot.<br><br>1. Click the <strong>Import</strong> button on the top bar of Streamer.bot.<br>2. Copy the code below, paste it into the empty <em>Import String</em> field, and click <strong>Import</strong>.
+                    </p>        
+
+                    <textarea id="sb-import-code" class="tut-code" readonly>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</textarea>
+                    <button class="btn-copy" data-action="copySbCode" data-i18n="ui_copy_code">Copy Import Code</button>
+                </div>
+
+                <div class="tut-section">
+                    <h4 data-i18n="ui_tut_5_title">5. Google API Configuration</h4>
+                    <p data-i18n="ui_tut_5_desc" class="ex-style-052">
+                        To fetch videos, you need a free API key. You can set it up in the Settings (⚙️) panel after closing this window.<br><br>🔒 <strong>Your data is 100% safe!</strong> Your API key is saved only locally in your browser's memory (Local Storage).
+                    </p>
+                </div>
+
+                <div class="ex-style-054">
+                    <strong id="tut-done-text" class="ex-style-055">Loading...</strong><br>
+                    <a id="tut-final-link" href="#" target="_blank" class="ex-style-056">
+                        Loading link...
+                    </a>
+                    <div data-i18n="ui_tut_reminder" class="ex-style-057">⚠️ Remember that Streamer.bot settings must always match the ones on this page!</div>
+                </div>
+                
+                <div class="ex-style-058">
+                    <button id="tut-close-btn" data-action="closeTutorial" data-i18n="ui_tut_btn_understand" class="ex-style-059">I UNDERSTAND, CONTINUE!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="translations.js?v=20260511-widget30"></script>
+    <script src="app.js?v=20260511-widget30"></script>
+</body>
+</html>
