@@ -502,7 +502,8 @@ function connectWidgetWebsocket() {
     widgetWs.onmessage = async event => {
         try {
             const raw = JSON.parse(event.data.toString());
-            if (raw.request === 'Hello') {
+            // Streamer.bot Hello: {info:{...}, authentication?:{...}}
+            if (raw.info) {
                 await handleWidgetStreamerBotHello(raw);
                 return;
             }
@@ -706,7 +707,7 @@ setInterval(monitorWidgetConnection, 1000);
         }
 
         function t(key, vars = {}) {
-            let dict = i18n[currentLang] || i18n['en'];
+            let dict = (i18n[currentLang] && Object.keys(i18n[currentLang]).length > 0 ? i18n[currentLang] : null) || i18n['en'];
             
             let text = dict[key] || i18n['en'][key] || key;
             if (key.startsWith('msg_') && customMsgs[key]) {
@@ -737,7 +738,7 @@ setInterval(monitorWidgetConnection, 1000);
                 ws.onclose = null; 
                 ws.close();
                 clearTimeout(wsReconnectTimeout);
-                connectWebsocket();
+                wsRetryCount = 0; connectWebsocket();
             }
         }
 
@@ -813,7 +814,7 @@ setInterval(monitorWidgetConnection, 1000);
         }
         // =========================================================================
         
-        let player, ws, wsReconnectTimeout;
+        let player, ws, wsReconnectTimeout, wsRetryCount = 0;
         let masterList = [];   
         let playQueue = [];     
         let playHistory = [];   
@@ -1005,7 +1006,7 @@ setInterval(monitorWidgetConnection, 1000);
             let keys = Object.keys(i18n['en']).filter(k => k.startsWith('msg_'));
             
             keys.forEach(k => {
-                let defaultTxt = i18n[currentLang][k] || i18n['en'][k];
+                let defaultTxt = (i18n[currentLang] && i18n[currentLang][k]) || i18n['en'][k];
                 let currentTxt = customMsgs[k] !== undefined ? customMsgs[k] : defaultTxt;
                 let vars = getVarsDesc(k);
                 
@@ -1041,7 +1042,7 @@ setInterval(monitorWidgetConnection, 1000);
         function resetCustomMsg(key) {
             delete customMsgs[key];
             localStorage.setItem('ytm_custom_msgs_' + currentLang, JSON.stringify(customMsgs));
-            document.getElementById(`msg_input_${key}`).value = i18n[currentLang][key] || i18n['en'][key];
+            document.getElementById(`msg_input_${key}`).value = (i18n[currentLang] && i18n[currentLang][key]) || i18n['en'][key];
             log(`🔄 Reset custom message for: ${key}`, "normal");
         }
 
@@ -1062,7 +1063,7 @@ setInterval(monitorWidgetConnection, 1000);
                     ws.onclose = null; 
                     ws.close();
                     clearTimeout(wsReconnectTimeout);
-                    connectWebsocket();
+                    wsRetryCount = 0; connectWebsocket();
                 }
             }
         }
@@ -1787,7 +1788,7 @@ setInterval(monitorWidgetConnection, 1000);
         }
 
         async function onPlayerReady() {
-            connectWebsocket();
+            wsRetryCount = 0; connectWebsocket();
             const restoredQueue = restorePersistedQueue();
             queuePersistenceReady = true;
             if (!restoredQueue) await loadInitialPlayerSong();
@@ -2337,6 +2338,7 @@ setInterval(monitorWidgetConnection, 1000);
         function setWebsocketConnected() {
             document.getElementById('status').innerText = t('ui_bot_connected');
             document.getElementById('status').style.color = "#00ff88";
+            log(`✅ Streamer.bot підключено і готово!`, "normal");
         }
 
         function setWebsocketAuthFailed(message = "WebSocket Authentication Failed!") {
@@ -2371,16 +2373,39 @@ setInterval(monitorWidgetConnection, 1000);
         }
 
         function connectWebsocket() {
+            // Close previous socket cleanly before reconnecting
+            if (ws) {
+                ws.onclose = null;
+                ws.onerror = null;
+                try { ws.close(); } catch (_) {}
+                ws = null;
+            }
+            clearTimeout(wsReconnectTimeout);
+
+            const attemptLabel = wsRetryCount > 0 ? ` · спроба ${wsRetryCount + 1}` : '';
+            document.getElementById('status').innerText = t('ui_bot_connecting') + attemptLabel;
+            document.getElementById('status').style.color = "var(--text-muted, #aaa)";
+
             ws = new WebSocket(`ws://localhost:${WS_PORT}/`);
-            ws.onopen = () => { 
-                log(`🔌 WebSocket opened on port ${WS_PORT}`, "normal");
+            ws.onopen = () => {
+                wsRetryCount = 0;
+                log(`🔌 WebSocket з'єднано на порту ${WS_PORT}, очікуємо Streamer.bot...`, "normal");
+                document.getElementById('status').innerText = '⏳ Очікування Streamer.bot...';
+                document.getElementById('status').style.color = "var(--text-muted, #aaa)";
+            };
+            ws.onerror = (err) => {
+                // Логуємо тільки першу помилку або кожну 5-ту щоб не спамити консоль
+                if (wsRetryCount === 0 || wsRetryCount % 5 === 0) {
+                    log(`🔴 Streamer.bot недоступний на порту ${WS_PORT}. Перевірте що він запущений.`, "error");
+                }
             };
             ws.onmessage = async (e) => {
                 const rawData = e.data.toString();
                 try {
                     const raw = JSON.parse(rawData);
 
-                    if (raw.request === "Hello") {
+                    // Streamer.bot Hello: server sends {info:{...}, authentication?:{...}}
+                    if (raw.info) {
                         await handleStreamerBotHello(raw);
                         return;
                     }
@@ -2443,10 +2468,23 @@ setInterval(monitorWidgetConnection, 1000);
                     }
                 } catch(err) {}
             };
-            ws.onclose = () => { 
-                document.getElementById('status').innerText = t('ui_bot_disconnected');
+            ws.onclose = () => {
+                // Exponential backoff: 3s, 5s, 10s, 20s, 30s — максимум 30с
+                const delays = [3000, 5000, 10000, 20000, 30000];
+                const delay = delays[Math.min(wsRetryCount, delays.length - 1)];
+                wsRetryCount++;
+
+                const delaySec = Math.round(delay / 1000);
+                document.getElementById('status').innerText = t('ui_bot_disconnected') + ` · повтор через ${delaySec}с`;
                 document.getElementById('status').style.color = "var(--red)";
-                wsReconnectTimeout = setTimeout(connectWebsocket, 5000); 
+
+                // Логуємо тільки першу спробу або кожну 5-ту
+                if (wsRetryCount === 1 || wsRetryCount % 5 === 0) {
+                    log(`🔴 З'єднання з Streamer.bot втрачено. Повтор через ${delaySec}с… (спроба ${wsRetryCount})`, "error");
+                }
+
+                clearTimeout(wsReconnectTimeout);
+                wsReconnectTimeout = setTimeout(connectWebsocket, delay);
             };
         }
 
